@@ -274,6 +274,7 @@ button.sm:hover{border-color:var(--ac)}
   </div>
 
   <div id="contaLista" style="display:none"></div>
+  <input type="file" id="lImpArq" accept=".xlsx,.zip" multiple style="display:none">
   <div id="formC" style="display:none">
     <div class="card"><div class="sel">
       <div><h2 id="cNomeT"></h2><div class="sub" id="cInfo" style="margin:0"></div></div>
@@ -1583,7 +1584,7 @@ const TELS={"38877395826": {"ddd": "18", "tel": "996683321"}, "03785779135": {"d
 let CSAVED={},LOTE=[],SELC=null;
 try{CSAVED=JSON.parse(localStorage.getItem('conta_sal_v1')||'{}')}catch(e){}
 try{LOTE=JSON.parse(localStorage.getItem('conta_lote_v1')||'[]')}catch(e){}
-const salvaC=()=>{try{localStorage.setItem('conta_sal_v1',JSON.stringify(CSAVED));localStorage.setItem('conta_lote_v1',JSON.stringify(LOTE))}catch(e){}};
+const salvaC=()=>{try{localStorage.setItem('conta_sal_v1',JSON.stringify(CSAVED));localStorage.setItem('conta_lote_v1',JSON.stringify(LOTE))}catch(e){}sbSalvaLote()};
 const CDEF={cLogr:'RUA',cCompl:'N/A',cDdd:'45',cTipoC:'CORRENTE',cCartao:'NÃO',cPort:'SIM'};
 function selecionarC(i){
   SELC=DATA[i];const k=cpfKey(SELC[3]),ex=EXTRA[k]||{},sv=CSAVED[k]||{};
@@ -1631,12 +1632,12 @@ function grupos(){
 let ULTKEY=null;
 function renderLote(){
   const b=$('contaLista'),G=grupos();
-  if(!G.length){b.innerHTML='<div class="ext" style="margin-bottom:8px">Pesquise um funcionário para adicionar na planilha. Cada empresa (matriz e filiais juntas) ganha a sua própria planilha. Os dados preenchidos ficam salvos.</div>';return}
-  b.innerHTML=`<div class="card"><div class="sel"><h2>Planilhas de conta salário · ${G.length} ${G.length===1?'empresa':'empresas'} · ${LOTE.length} ${LOTE.length===1?'funcionário':'funcionários'}</h2><button class="lnk" id="lLimpa">Limpar tudo</button></div>
+  if(!G.length){b.innerHTML='<div class="ext" style="margin-bottom:8px">Pesquise um funcionário para adicionar na planilha. Cada empresa (matriz e filiais juntas) ganha a sua própria planilha. Os dados preenchidos ficam salvos.</div><div class="actions" style="margin:0 0 10px"><button class="btn sec" id="lImp">Importar planilhas (.xlsx ou .zip)</button></div>';return}
+  b.innerHTML=`<div class="card"><div class="sel"><h2>Planilhas de conta salário · ${G.length} ${G.length===1?'empresa':'empresas'} · ${LOTE.length} ${LOTE.length===1?'funcionário':'funcionários'}</h2><span style="display:flex;gap:14px"><button class="lnk" id="lImp">Importar planilhas</button><button class="lnk" id="lLimpa">Limpar tudo</button></span></div>
   ${G.map(g=>{const c=cnpjsGrupo(g.rows);return `<div style="border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 12px;margin-top:10px">
     <div style="font-weight:600">${esc(nomeGrupo(g.rows))}</div>
     <div class="mini" style="margin-bottom:6px">${c.length?'CNPJ '+esc(c.join(' · ')):'CNPJ não informado'} · ${g.rows.length} ${g.rows.length===1?'funcionário':'funcionários'}</div>
-    ${g.rows.map((r,j)=>`<div class="ext" style="display:flex;justify-content:space-between;gap:8px"><span>${esc(r.nome)} · ${esc(r.cpf)} · ${esc(r.cBanco)}</span><button class="lnk" data-x="${g.idx[j]}">remover</button></div>`).join('')}
+    ${g.rows.map((r,j)=>`<div class="ext" style="display:flex;justify-content:space-between;gap:8px"><span>${esc(r.nome)} · ${esc(r.cpf)} · ${esc(r.cBanco)}</span><span style="display:flex;gap:12px"><button class="lnk" data-ed="${esc(r.cpf)}">editar</button><button class="lnk" data-x="${g.idx[j]}">remover</button></span></div>`).join('')}
     <div class="actions"><button class="btn" data-g="${esc(g.key)}">Baixar Excel desta empresa</button><button class="lnk" data-lg="${esc(g.key)}">limpar esta empresa</button></div></div>`}).join('')}
   ${G.length>1?'<div class="actions"><button class="btn sec" id="lZip">Baixar todas (ZIP)</button></div>':''}</div>`;
 }
@@ -1646,6 +1647,82 @@ $('contaLista').addEventListener('click',ev=>{
   const g=ev.target.closest('[data-g]');if(g){baixaConta(g.dataset.g);return}
   if(ev.target.id==='lZip'){baixaZip();return}
   if(ev.target.id==='lLimpa'){if(confirm('Limpar a lista inteira? (os dados de cada funcionário continuam salvos)')){LOTE=[];salvaC();renderLote()}}
+});
+/* ---------- Importar planilhas de conta salário já prontas (.xlsx / .zip) ---------- */
+const CIMP=[[2,'cTipoDoc'],[3,'cNumDoc'],[4,'cOrg'],[5,'cUfExp'],[6,'cDtEm','d'],[8,'cCep'],[9,'cLogr'],[10,'cEnd'],[11,'cBairro'],[12,'cNum'],[13,'cCompl'],[14,'cDdd'],[15,'cTel'],[16,'cMail'],[17,'cCartao'],[18,'cPort'],[19,'cBanco'],[20,'cAg'],[21,'cConta'],[22,'cTipoC'],[23,'rCpf'],[24,'rNome'],[25,'rTipo'],[26,'rNum'],[27,'rOrg'],[28,'rUf'],[29,'rData','d'],[30,'rDdd'],[31,'rCel']];
+function impData(v){
+  if(v==null||v==='')return '';
+  if(v instanceof Date)return isNaN(v)?'':new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  if(typeof v==='number')return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);
+  const t=String(v).trim(),m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return /^\d{4}-\d\d-\d\d/.test(t)?t.slice(0,10):'';
+}
+function leConta(buf){
+  const wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]];
+  const m=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  const titulo=String((m[0]||[])[0]||'').trim();
+  let h=m.findIndex(r=>/CPF/i.test(String(r[0]||'')));if(h<0)h=2;
+  const out=[];
+  for(let i=h+1;i<m.length;i++){
+    const r=m[i];let cpf=cpfKey(r[0]);if(!cpf)continue;
+    if(cpf.length<11)cpf=cpf.padStart(11,'0');
+    if(cpf.length!==11)continue;
+    const nome=String(r[1]||'').trim();if(!nome)continue;
+    const sv={};
+    CIMP.forEach(c=>{const v=r[c[0]];sv[c[1]]=c[2]==='d'?impData(v):(v==null?'':String(v).trim())});
+    out.push({cpf,nome,sv});
+  }
+  return {titulo,rows:out};
+}
+function empCnpjFunc(f){
+  const scm=norm(f[1]).startsWith('SCM EVOLUTT');
+  const e=empresaDe(f[1]);let cnpj=e.cnpj;
+  if(scm){const x=SCMF.find(y=>y.id===(SCM_CPF[norm(f[0])]||'ppnativa'));if(x)cnpj=x.cnpj}
+  return {emp:scm?'SCM EVOLUTT CONNECT LTDA':e.razao,cnpj};
+}
+async function importaPlanilhas(files){
+  const bufs=[];
+  for(const f of files){
+    const nm=f.name.toLowerCase();
+    if(nm.endsWith('.zip')){
+      const z=await JSZip.loadAsync(f);
+      for(const n of Object.keys(z.files)){const e=z.files[n];if(!e.dir&&/\.xlsx$/i.test(n)&&!/(^|\/)~\$/.test(n))bufs.push(await e.async('arraybuffer'))}
+    }else if(nm.endsWith('.xlsx'))bufs.push(await f.arrayBuffer());
+  }
+  if(!bufs.length){alert('Nenhuma planilha .xlsx encontrada nos arquivos escolhidos.');return}
+  let novos=0,atual=0,semCad=0,arqs=0;const up=[];
+  for(const b of bufs){
+    let pl;try{pl=leConta(b)}catch(e){continue}
+    arqs++;
+    const mt=/^(.*?)\s*-\s*CNPJ\s*(.*)$/i.exec(pl.titulo||''),tEmp=mt?mt[1].trim():pl.titulo,tCnpj=mt?((mt[2].match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/)||[''])[0]):'';
+    for(const it of pl.rows){
+      const f=DATA.find(r=>cpfKey(r[3])===it.cpf);
+      let emp,cnpj;
+      if(f){const x=empCnpjFunc(f);emp=x.emp;cnpj=x.cnpj}else{emp=tEmp;cnpj=tCnpj;semCad++}
+      const sv={};CF.forEach(id=>{const antigo=(CSAVED[it.cpf]||{})[id];sv[id]=it.sv[id]!==''&&it.sv[id]!=null?it.sv[id]:(antigo!=null?antigo:'')});
+      CSAVED[it.cpf]=sv;up.push({cpf:it.cpf,dados:sv,atualizado_em:new Date().toISOString()});
+      const row=Object.assign({cpf:fmtCpf(it.cpf),nome:f?f[0]:it.nome,emp,cnpj},sv);
+      if(LOTE.some(r=>cpfKey(r.cpf)===it.cpf))atual++;else novos++;
+      LOTE=LOTE.filter(r=>cpfKey(r.cpf)!==it.cpf).concat(row);
+    }
+  }
+  salvaC();
+  for(let i=0;i<up.length;i+=100){
+    const {error}=await SB.from('conta_salario').upsert(up.slice(i,i+100));
+    if(error){alert('Importei, mas não consegui salvar os dados no banco: '+error.message);break}
+  }
+  renderLote();
+  alert('Importação concluída: '+arqs+(arqs===1?' planilha':' planilhas')+', '+novos+' funcionários novos na lista, '+atual+' atualizados.'+(semCad?'\n\n'+semCad+' não estão na lista de funcionários; usei o nome da empresa que está na planilha.':''));
+}
+$('contaLista').addEventListener('click',ev=>{
+  if(ev.target.id==='lImp'){$('lImpArq').value='';$('lImpArq').click();return}
+  const ed=ev.target.closest('[data-ed]');
+  if(ed){const k=cpfKey(ed.dataset.ed),i=DATA.findIndex(r=>cpfKey(r[3])===k);if(i<0){alert('Esse funcionário não está na lista de funcionários.');return}selecionarC(i)}
+});
+$('lImpArq').addEventListener('change',async ev=>{
+  const fs=[...ev.target.files];if(!fs.length)return;
+  try{await importaPlanilhas(fs)}catch(e){alert('Não consegui importar: '+(e.message||e))}
 });
 $('cAdd').onclick=()=>{if(addConta()){$('formC').style.display='none';$('busca').style.display='block';$('contaLista').style.display='block';renderLote();$('q').value='';render();$('q').focus()}};
 $('cBaixarJa').onclick=async()=>{if(addConta())baixaConta(ULTKEY)};
@@ -2565,12 +2642,32 @@ async function sbSalvaConta(k,sv){
   const {error}=await SB.from('conta_salario').upsert({cpf:k,dados:sv,atualizado_em:new Date().toISOString()});
   if(error)alert('Não consegui salvar a conta salário no banco: '+error.message);
 }
+let LOTE_SYNC=false;
+async function sbSalvaLote(){
+  if(!LOTE_SYNC)return;
+  const {error}=await SB.from('conta_salario').upsert({cpf:'_lote',dados:{rows:LOTE},atualizado_em:new Date().toISOString()});
+  if(error)alert('Não consegui salvar a lista de planilhas no banco: '+error.message);
+}
 async function sbCarregaConta(){
   const {data,error}=await SB.from('conta_salario').select('cpf,dados');if(error)throw error;
-  const db={};(data||[]).forEach(r=>db[r.cpf]=r.dados);
+  const db={};let lote=null;
+  (data||[]).forEach(r=>{if(r.cpf==='_lote')lote=r.dados;else db[r.cpf]=r.dados});
   const up=[];Object.keys(CSAVED).forEach(k=>{if(!db[k]){db[k]=CSAVED[k];up.push({cpf:k,dados:CSAVED[k]})}});
   if(up.length)await SB.from('conta_salario').upsert(up);
   CSAVED=db;try{localStorage.setItem('conta_sal_v1',JSON.stringify(CSAVED))}catch(e){}
+  /* lista de planilhas: o banco é a fonte; na 1ª vez deste navegador, junta com o que já existia local */
+  let migrado=false;try{migrado=localStorage.getItem('conta_lote_sync_v1')==='1'}catch(e){}
+  const remoto=(lote&&Array.isArray(lote.rows))?lote.rows:null;
+  if(remoto&&migrado){LOTE=remoto}
+  else{
+    const m=new Map();(remoto||[]).forEach(r=>m.set(cpfKey(r.cpf),r));
+    LOTE.forEach(r=>{const k=cpfKey(r.cpf);if(!m.has(k))m.set(k,r)});
+    LOTE=[...m.values()];
+  }
+  try{localStorage.setItem('conta_lote_v1',JSON.stringify(LOTE))}catch(e){}
+  LOTE_SYNC=true;
+  if(!remoto||!migrado){await sbSalvaLote();try{localStorage.setItem('conta_lote_sync_v1','1')}catch(e){}}
+  try{renderLote()}catch(e){}
 }
 /* ---------- Demitir / Reativar ---------- */
 let DEMI=null;
