@@ -4,9 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Opção Contabilidade · Funcionários e Descontos</title>
+<script>(function(){var t="dark";try{var v=localStorage.getItem("tema_v1");if(v==="light"||v==="dark")t=v}catch(e){}document.documentElement.setAttribute("data-theme",t)})()</script>
 <style>
 :root{--bg:#f5f4f1;--card:#fff;--tx:#141414;--mut:#6f6a5e;--bd:#e3dfd3;--ac:#8a6a14;--acl:#f4edd8;--ok:#1a7f4b;--warn:#b45309;--bad:#b42318;--hl:#f6e4a6;--btn:#111;--btnt:#e8c65a;--gold:#c9a227}
-@media (prefers-color-scheme:dark){:root{--bg:#0c0c0c;--card:#171717;--tx:#f2f2f2;--mut:#a39d8c;--bd:#2d2a22;--ac:#d9b44a;--acl:#262116;--ok:#4cc38a;--warn:#f0a050;--bad:#ff8a80;--hl:#5a4a10;--btn:#d9b44a;--btnt:#111;--gold:#d9b44a}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0c0c0c;--card:#171717;--tx:#f2f2f2;--mut:#a39d8c;--bd:#2d2a22;--ac:#d9b44a;--acl:#262116;--ok:#4cc38a;--warn:#f0a050;--bad:#ff8a80;--hl:#5a4a10;--btn:#d9b44a;--btnt:#111;--gold:#d9b44a}
+:root[data-theme="light"]{color-scheme:light}
+.head>.tema-btn{position:absolute;top:10px;right:12px;z-index:2;background:rgba(0,0,0,.55);color:#d9c07a;border:1px solid var(--gold);border-radius:99px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+.head>.tema-btn:hover{background:var(--gold);color:#111}
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--tx);font-size:15px}
 .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
@@ -168,6 +172,7 @@ button.sm:hover{border-color:var(--ac)}
 <body>
 <div class="wrap">
   <div class="head">
+    <button class="tema-btn" id="tema" type="button" title="Alternar tema claro/escuro"></button>
     <div class="logo"><img id="logo" alt="Opção Consultoria e Contabilidade"></div>
     <div><h1 id="titulo">Portal <span class="gold">RH</span></h1><div class="sub"><span id="dica"></span> · <span id="cnt"></span></div></div>
   </div>
@@ -968,6 +973,7 @@ function empresaDe(key){
 function salvaEmpresa(key,o){
   SAVED[key]=Object.assign({},SAVED[key]||{},o);
   try{localStorage.setItem('desc_empresas_v1',JSON.stringify(SAVED))}catch(e){}
+  sbSalvaKV('_empresas',SAVED);
 }
 
 /* ---------- Utilitários ---------- */
@@ -2183,7 +2189,7 @@ function aplicaModelo(salvar){
   document.querySelectorAll('#mSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===MODELO));
   $('mDesc').textContent=c?'Completa (modelo Alumicenter): até 2 pares de entrada/saída, HN, HT, HE 50%, HE 100%, HF e quadro de compensação de horas.':'Simplificada: até 3 pares de entrada/saída, HN, HT e observação do dia (atestado, feriado, folga ou falta).';
   $('fNota').textContent=c?'Na Completa, HE 50% e HF saem da diferença entre HT e HN; a HE 100% você preenche à mão em cada dia, como no modelo. O PDF e o Excel seguem o modelo escolhido.':'O saldo (trabalhado menos jornada) aparece só aqui na tela. O PDF e o Excel seguem o modelo do relatório.';
-  if(salvar){try{localStorage.setItem('ferias_modelo_v1',MODELO)}catch(e){}}
+  if(salvar){try{localStorage.setItem('ferias_modelo_v1',MODELO)}catch(e){}sbSalvaPrefs()}
   renderDias();
 }
 $('mSeg').addEventListener('click',ev=>{const b=ev.target.closest('button[data-m]');if(!b)return;MODELO=b.dataset.m;aplicaModelo(true)});
@@ -2558,7 +2564,7 @@ function renderEmpDet(){
 }
 let PROL={},PEDIT=-1;
 try{PROL=JSON.parse(localStorage.getItem('prolabore_v1')||'{}')}catch(e){}
-function salvaProl(){try{localStorage.setItem('prolabore_v1',JSON.stringify(PROL))}catch(e){alert('Não consegui salvar neste navegador.')}}
+function salvaProl(){try{localStorage.setItem('prolabore_v1',JSON.stringify(PROL))}catch(e){alert('Não consegui salvar neste navegador.')}sbSalvaKV('_prolabore',PROL)}
 function renderProl(){
   const n=EMPDET;if(n==null||!$('plTb'))return;
   const l=PROL[n]||[];
@@ -2651,7 +2657,7 @@ async function sbSalvaLote(){
 async function sbCarregaConta(){
   const {data,error}=await SB.from('conta_salario').select('cpf,dados');if(error)throw error;
   const db={};let lote=null;
-  (data||[]).forEach(r=>{if(r.cpf==='_lote')lote=r.dados;else db[r.cpf]=r.dados});
+  (data||[]).forEach(r=>{if(r.cpf==='_lote')lote=r.dados;else if(String(r.cpf)[0]!=='_')db[r.cpf]=r.dados});
   const up=[];Object.keys(CSAVED).forEach(k=>{if(!db[k]){db[k]=CSAVED[k];up.push({cpf:k,dados:CSAVED[k]})}});
   if(up.length)await SB.from('conta_salario').upsert(up);
   CSAVED=db;try{localStorage.setItem('conta_sal_v1',JSON.stringify(CSAVED))}catch(e){}
@@ -2668,6 +2674,31 @@ async function sbCarregaConta(){
   LOTE_SYNC=true;
   if(!remoto||!migrado){await sbSalvaLote();try{localStorage.setItem('conta_lote_sync_v1','1')}catch(e){}}
   try{renderLote()}catch(e){}
+}
+let SYNC_KV=false;
+async function sbSalvaKV(k,v){
+  if(!SYNC_KV)return;
+  const {error}=await SB.from('conta_salario').upsert({cpf:k,dados:v,atualizado_em:new Date().toISOString()});
+  if(error)alert('Não consegui salvar no banco: '+error.message);
+}
+async function sbCarregaExtras(){
+  const CH=['_empresas','_prolabore','_prefs'];
+  const {data,error}=await SB.from('conta_salario').select('cpf,dados').in('cpf',CH);if(error)throw error;
+  const R={};(data||[]).forEach(r=>R[r.cpf]=r.dados);
+  let mig=false;try{mig=localStorage.getItem('kv_sync_v1')==='1'}catch(e){}
+  /* depois da 1ª sincronização o banco é a fonte; na 1ª vez junta com o que já existia neste navegador */
+  const mescla=(loc,rem)=>(mig&&rem)?rem:Object.assign({},loc,rem||{});
+  SAVED=mescla(SAVED,R._empresas);PROL=mescla(PROL,R._prolabore);
+  const pf=R._prefs&&R._prefs.ferias_modelo;if(pf==='completa'||pf==='simples')MODELO=pf;
+  const pt=R._prefs&&R._prefs.tema;if(pt==='light'||pt==='dark')aplicaTema(pt,false);
+  try{localStorage.setItem('desc_empresas_v1',JSON.stringify(SAVED));localStorage.setItem('prolabore_v1',JSON.stringify(PROL));localStorage.setItem('ferias_modelo_v1',MODELO)}catch(e){}
+  SYNC_KV=true;
+  if(!mig||!R._empresas)await sbSalvaKV('_empresas',SAVED);
+  if(!mig||!R._prolabore)await sbSalvaKV('_prolabore',PROL);
+  if(!mig||!R._prefs||!R._prefs.tema)await sbSalvaPrefs();
+  try{localStorage.setItem('kv_sync_v1','1')}catch(e){}
+  try{renderEmp()}catch(e){}
+  try{aplicaModelo(false)}catch(e){}
 }
 /* ---------- Demitir / Reativar ---------- */
 let DEMI=null;
@@ -2704,6 +2735,7 @@ async function sbIniciaApp(){
     BASE=await sbCarrega();
     if(STORE.rows.length){await sbGrava(STORE.rows);STORE={mode:'merge',rows:[]};salvaStore();BASE=await sbCarrega()}
     await sbCarregaConta();
+    await sbCarregaExtras();
   }catch(e){alert('Erro ao carregar do banco: '+(e.message||e))}
   aplicaStore();
 }
@@ -2720,6 +2752,17 @@ $('sbSair').onclick=async()=>{await SB.auth.signOut();location.reload()};
   const {data:{session}}=await SB.auth.getSession();
   if(session)sbIniciaApp();else $('sbLogin').style.display='flex';
 })();
+let TEMA=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+async function sbSalvaPrefs(){await sbSalvaKV('_prefs',{ferias_modelo:MODELO,tema:TEMA})}
+function aplicaTema(t,salvar){
+  TEMA=t==='light'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',TEMA);
+  try{localStorage.setItem('tema_v1',TEMA)}catch(e){}
+  $('tema').textContent=TEMA==='dark'?'☀ Tema claro':'🌙 Tema escuro';
+  if(salvar)sbSalvaPrefs();
+}
+$('tema').onclick=()=>aplicaTema(TEMA==='dark'?'light':'dark',true);
+aplicaTema(TEMA,false);
 setTab('home');
 </script>
 </body>
