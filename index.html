@@ -1961,6 +1961,28 @@ function relatorioERP(rows){
   }
   return {hdr:['Nome','CPF','Empresa','Departamento','Cargo','Admissão','Situação'],linhas};
 }
+/* Relatório "Empregados em Excel - Apenas Ativos" (várias empresas, cabeçalho repetido a cada página).
+   As colunas dos dados ficam em posições fixas (os títulos ficam deslocados por causa das células mescladas). */
+const ATV={nome:3,adm:12,cargo:41,emp:94,dep:113,cpf:147};
+function ehRelatorioAtivos(rows){
+  return rows.slice(0,6).some(r=>{const t=r.map(c=>norm(String(c)));return t.includes('COD EMP')&&t.includes('COD EPR')&&t.some(x=>x.includes('CCUSTO'))});
+}
+function relatorioAtivos(rows){
+  const nomesEmp=[...new Set(DATA.map(r=>r[1]))];
+  const mapEmp=n=>{const k=norm(n).slice(0,40);return nomesEmp.find(e=>norm(e).slice(0,40)===k)||n.slice(0,40)};
+  const tx=(r,i)=>{const v=r[i];return v instanceof Date?txtData(v):String(v==null?'':v).trim()};
+  const linhas=[];let ign=0;
+  for(const r of rows){
+    const nome=tx(r,ATV.nome);
+    if(!nome||norm(nome)==='NOME')continue;
+    const cpf=tx(r,ATV.cpf).replace(/\D/g,'');
+    const adm=dataCel(r[ATV.adm]);
+    const emp=tx(r,ATV.emp);
+    if(!/^\d{9,11}$/.test(cpf)||!emp){ign++;continue}
+    linhas.push([nome,cpf.padStart(11,'0'),mapEmp(emp),tx(r,ATV.dep),tx(r,ATV.cargo),/^\d\d\/\d\d\/\d{4}$/.test(adm)?adm:'','Trabalhando']);
+  }
+  return {hdr:['Nome','CPF','Empresa','Departamento','Cargo','Admissão','Situação'],linhas};
+}
 function txtData(v){
   if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+43200000);return p2(d.getDate())+'/'+p2(d.getMonth()+1)+'/'+d.getFullYear()}
   return String(v==null?'':v).trim();
@@ -2022,7 +2044,11 @@ $('iFile').onchange=ev=>{
         }
       }
       if(!rows)rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,cellDates:true,defval:''});
-      if(ehRelatorioERP(rows)){
+      if(ehRelatorioAtivos(rows)){
+        IMP=relatorioAtivos(rows);
+        if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
+        mostraMapa();
+      }else if(ehRelatorioERP(rows)){
         IMP=relatorioERP(rows);
         if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
         mostraMapa();
