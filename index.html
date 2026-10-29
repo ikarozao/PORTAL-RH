@@ -217,6 +217,14 @@ button.sm:hover{border-color:var(--ac)}
   </div>
 
   <div id="busca">
+    <div class="card" id="fImpBox" style="display:none">
+      <div class="sel">
+        <div><h2>Importar planilhas prontas</h2><div class="ext" style="margin:0">Jogue aqui as planilhas de horas que você já preencheu (.xlsx, no modelo Alumicenter). O portal lê nome, dias, entradas e saídas, e calcula HN, HT, HE, HE 100% e HF de cada uma.</div></div>
+        <button class="btn" id="fImpBtn">Importar planilhas</button>
+      </div>
+      <input type="file" id="fImpFile" accept=".xlsx,.xlsm" multiple style="display:none">
+      <div id="fImpRes"></div>
+    </div>
     <div class="bar" style="margin-bottom:10px">
       <button class="btn sec" id="novo">+ Novo funcionário</button>
       <button class="btn sec" id="imp">Importar relatório</button>
@@ -1145,6 +1153,7 @@ function setTab(m){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===m));
   $('dica').textContent=home?'Selecione uma opção para começar':TERMOS[m]?'Escolha o funcionário, preencha os dados e baixe o termo em PDF':m==='conta'?'Escolha o funcionário e complete só o que não está no cadastro':m==='demitidos'?'Pesquise os funcionários demitidos ou reative um cadastro':m==='consulta'?'Pesquise e consulte os dados dos funcionários':m==='ferias'?'Escolha o funcionário e gere o relatório de compensação de horas':m==='empresas'?'CNPJ, endereço e modelo usados nos documentos':'Escolha o funcionário, informe valor e parcelas e baixe o PDF';
   $('form').style.display='none';$('formF').style.display='none';$('formT').style.display='none';$('formC').style.display='none';$('contaLista').style.display=m==='conta'?'block':'none';if(m==='conta')renderLote();const sec=['consulta','desconto','ferias','chip','celular','notebook','conta','demitidos'].includes(m);$('busca').style.display=sec?'block':'none';EMPDET=null;$('empDet').style.display='none';$('empView').style.display=m==='empresas'?'block':'none';document.body.classList.toggle('wide',m==='ferias');if(m==='empresas')renderEmp();
+  $('fImpBox').style.display=m==='ferias'?'block':'none';
   render();window.scrollTo(0,0);
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='home'&&b.dataset.t!=='empresas')$('q').focus()});
@@ -2259,6 +2268,125 @@ function dadosF(){
 }
 const nomeF=(m,ext)=>'Compensacao_Horas_'+norm(m.nome).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'')+'.'+ext;
 const totalF=m=>m.dias.reduce((a,d)=>a+htDia(d).tot,0);
+
+/* ---------- Importar planilhas prontas (.xlsx) ---------- */
+let IMPF=[];
+const celT=v=>v==null?'':String(v).trim();
+const hhmm=min=>p2(Math.floor(min/60))+':'+p2(min%60);
+function serialParaData(v){
+  if(typeof v==='number'&&v>20000){const d=new Date(Math.round((v-25569)*86400000));return {y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),wd:d.getUTCDay(),serial:Math.round(v)}}
+  if(typeof v==='string'){const q=v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(q){const t=Date.UTC(+q[3],+q[2]-1,+q[1]),d=new Date(t);return {y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),wd:d.getUTCDay(),serial:Math.round(t/86400000)+25569}}}
+  return null;
+}
+function minDe(v){
+  if(typeof v==='number')return Math.round((v%1)*1440)%1440;
+  if(typeof v==='string'){const q=v.trim().match(/^(\d{1,2}):(\d{2})/);if(q)return +q[1]*60+ +q[2]}
+  return null;
+}
+function lerPlanilhaF(buf,arq){
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
+  let hr=-1;
+  for(let r=0;r<Math.min(rows.length,40);r++){const t=(rows[r]||[]).map(x=>norm(celT(x)));if(t.includes('DIA')&&t.includes('ENTRADA')){hr=r;break}}
+  if(hr<0)throw new Error('não achei a linha de títulos (Dia, Entrada, Saída…)');
+  const H=rows[hr].map(x=>norm(celT(x)).replace(/\./g,''));
+  const iDia=H.indexOf('DIA');
+  const iEnt=[],iSai=[];H.forEach((t,i)=>{if(t==='ENTRADA')iEnt.push(i);else if(t==='SAIDA')iSai.push(i)});
+  const iHN=H.indexOf('HN'),iHE1=H.indexOf('HE 100%'),iObs=H.findIndex(t=>t==='OBS');
+  const iHE=H.findIndex(t=>/^HE \d+%$/.test(t)&&t!=='HE 100%');
+  // cabeçalho: nome, jornada, mês, ano
+  const ROT=['MES','ANO','NOME:','JORNADA NORMAL:'];
+  const prox=(r,c)=>{const l=rows[r]||[];for(let k=c+1;k<l.length;k++)if(l[k]!=null&&celT(l[k])!==''){return ROT.includes(norm(celT(l[k])))?null:l[k]}return null};
+  let nome='',jor='',mes='',ano='';
+  for(let r=0;r<hr;r++){(rows[r]||[]).forEach((v,c)=>{
+    const t=norm(celT(v));
+    if(t==='NOME:')nome=celT(prox(r,c));
+    else if(t==='JORNADA NORMAL:'){const j=prox(r,c);jor=j==null?'':typeof j==='number'?hhmm(minDe(j)):celT(j)}
+    else if(t==='MES')mes=celT(prox(r,c));
+    else if(t==='ANO')ano=celT(prox(r,c));
+  })}
+  if(!nome)throw new Error('não achei o nome (campo "Nome:")');
+  const dias=[];
+  for(let r=hr+1;r<rows.length&&dias.length<40;r++){
+    const l=rows[r]||[];const dt=serialParaData(l[iDia]);
+    if(!dt)break;
+    const pares=[];
+    iEnt.forEach((ce,k)=>{const a=minDe(l[ce]),b=minDe(l[iSai[k]]);if(a!=null||b!=null)pares.push([a!=null?hhmm(a):'',b!=null?hhmm(b):''])});
+    const padrao=hnPadrao(dt.wd);
+    let hn=padrao,man=false;
+    if(iHN>=0){const v=minDe(l[iHN]);if(v!=null){hn=hhmm(v);man=hn!==padrao}}
+    const obs=iObs>=0?celT(l[iObs]):'';
+    let tp='',at=['',''];
+    if(/atestado/i.test(obs)){tp='Atestado';const q=obs.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);if(q)at=[q[1].padStart(5,'0'),q[2].padStart(5,'0')]}
+    else if(/feriado/i.test(obs))tp='Feriado';
+    else if(/folga/i.test(obs))tp='Folga';
+    else if(/falta/i.test(obs))tp='Falta';
+    let he='';if(iHE1>=0){const v=minDe(l[iHE1]);if(v)he=hhmm(v)}
+    dias.push({iso:isoD(dt.y,dt.m-1,dt.d),d:dt.d,m:dt.m,y:dt.y,wd:dt.wd,serial:dt.serial,pares:pares.length?pares:[['','']],hn,man:man||!!tp,tp,he,at});
+  }
+  if(!dias.length)throw new Error('não encontrei dias com data');
+  if(!mes)mes=MESES[dias[0].m-1].toUpperCase();
+  if(!ano)ano=String(dias[0].y);
+  return {arq,nome,jor,mes:mes.toUpperCase(),ano,dias,temHE:iHE>=0||iHE1>=0};
+}
+function resumoF(dias){
+  let T=0,N=0,E5=0,E1=0,F=0,tr=0;
+  dias.forEach(d=>{const h=heDia(d);T+=h.ht;N+=h.n;E5+=h.e5;E1+=h.e1;F+=h.hf;if(h.ht>0)tr++});
+  return {T,N,E5,E1,F,tr};
+}
+function renderImpF(){
+  const box=$('fImpRes');
+  if(!IMPF.length){box.innerHTML='';return}
+  const lin=IMPF.map((x,k)=>{
+    if(x.erro)return `<tr><td colspan="7"><b>${esc(x.arq)}</b> <span class="neg">— ${esc(x.erro)}</span></td><td></td></tr>`;
+    const r=resumoF(x.dias),s=r.T-r.N;
+    return `<tr><td><b>${esc(x.nome)}</b><br><small>${esc(x.mes)}/${esc(x.ano)} · ${x.dias.length} dias · ${esc(x.arq)}</small></td>
+      <td>${hm(r.T)}</td><td>${hm(r.N)}</td><td>${hm(r.E5)}</td><td>${hm(r.E1)}</td><td>${hm(r.F)}</td>
+      <td class="${s>=0?'pos':'neg'}">${s<0?'−':'+'}${hm(Math.abs(s))}</td>
+      <td style="white-space:nowrap"><button class="btn sec" data-ia="abrir" data-k="${k}">Abrir</button> <button class="btn sec" data-ia="pdf" data-k="${k}">PDF</button></td></tr>`}).join('');
+  box.innerHTML=`<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>Funcionário</th><th>Trabalhado</th><th>Jornada</th><th>HE ${HEP}%</th><th>HE 100%</th><th>HF</th><th>Saldo</th><th></th></tr></thead><tbody>${lin}</tbody></table></div>
+    <div class="ext">HE 100% é calculada nos dias sem HN (ou vale o que estiver na coluna HE 100% da planilha). "Abrir" leva a planilha para a tela de Férias para você conferir, editar e baixar PDF ou Excel.</div>`;
+}
+async function importaArquivosF(files){
+  const lista=[...files];if(!lista.length)return;
+  $('fImpRes').innerHTML='<div class="ext">Lendo planilhas…</div>';
+  IMPF=[];
+  for(const f of lista){
+    try{IMPF.push(lerPlanilhaF(await f.arrayBuffer(),f.name))}
+    catch(e){IMPF.push({arq:f.name,erro:e.message})}
+  }
+  if(IMPF.some(x=>x.temHE)&&MODELO!=='completa'){MODELO='completa';aplicaModelo(true)}
+  renderImpF();
+}
+function modeloImpF(x){return {nome:x.nome,mes:x.mes,ano:x.ano,jornada:x.jor,dias:x.dias,modelo:MODELO}}
+function abrirImpF(k){
+  const x=IMPF[k];if(!x||x.erro)return;
+  const i=DATA.findIndex(r=>norm(r[0]).trim()===norm(x.nome).trim());
+  if(i>=0)selecionarF(i);
+  else{
+    SELF=[x.nome,'','—','—','—'];
+    $('fNome').textContent=x.nome;$('fInfo').textContent='Não encontrado no cadastro — usando o nome da planilha';
+    $('fErro').textContent='';
+    $('busca').style.display='none';$('formF').style.display='block';window.scrollTo(0,0);
+  }
+  DIAS=x.dias.map(d=>({...d,pares:d.pares.map(p=>[...p]),at:[...d.at]}));
+  $('fIni').value=DIAS[0].iso;$('fFim').value=DIAS[DIAS.length-1].iso;
+  $('fMes').value=x.mes;$('fAno').value=x.ano;$('fJor').value=x.jor||'';
+  montaDias();
+}
+$('fImpBtn').onclick=()=>{$('fImpFile').value='';$('fImpFile').click()};
+$('fImpFile').addEventListener('change',ev=>importaArquivosF(ev.target.files));
+$('fImpBox').addEventListener('dragover',ev=>{ev.preventDefault()});
+$('fImpBox').addEventListener('drop',ev=>{ev.preventDefault();if(ev.dataTransfer&&ev.dataTransfer.files.length)importaArquivosF(ev.dataTransfer.files)});
+$('fImpRes').addEventListener('click',ev=>{
+  const b=ev.target.closest('button[data-ia]');if(!b)return;
+  const k=+b.dataset.k;
+  if(b.dataset.ia==='abrir')abrirImpF(k);
+  else{const x=IMPF[k];if(!x||x.erro)return;const m=modeloImpF(x);
+    if(MODELO==='completa'&&m.dias.some(d=>d.pares.length>2)){alert('Algum dia tem mais de 2 pares de entrada/saída; use "Abrir" e a planilha Simplificada.');return}
+    pdfDoc(m).save(nomeF(m,'pdf'))}
+});
 
 function celF(doc,cx){
   return function cel(c1,c2,y,h,txt,o){
