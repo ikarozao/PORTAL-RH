@@ -438,6 +438,12 @@ button.sm:hover{border-color:var(--ac)}
   <div class="foot">Contém CPFs de funcionários: não compartilhe este arquivo fora da empresa. Tudo roda neste arquivo, nada é enviado pela internet.</div>
 </div>
 
+<div class="modal" id="mFicha"><div class="box2">
+  <h2 id="fiNome"></h2>
+  <div id="fiCorpo"></div>
+  <div class="actions" style="margin-top:14px"><button class="btn sec" id="fiFechar">Fechar</button></div>
+</div></div>
+
 <div class="modal" id="mDem"><div class="box2">
   <h2>Demitir funcionário</h2>
   <div class="ext" id="dInfo" style="margin-bottom:10px"></div>
@@ -1121,7 +1127,7 @@ function render(){
   if(dem){
     $('res').innerHTML=list.slice(0,lim).map(x=>{
       const r=x.r;
-      return `<div class="card"><div class="nome"><span>${hl(r[0],terms)}</span><button class="cp re" data-i="${x.i}">Reativar</button></div>
+      return `<div class="card"><div class="nome"><span class="fn" data-i="${x.i}" title="Ver ficha completa">${hl(r[0],terms)}</span><button class="cp re" data-i="${x.i}">Reativar</button></div>
       <dl class="dl"><dt>Empresa</dt><dd>${esc(r[1])}</dd>
       <dt>CPF</dt><dd><span class="cpf">${esc(r[3])}</span> <button class="cp" data-v="${esc(r[3])}">Copiar</button></dd>
       <dt>Cargo</dt><dd>${esc(r[4]||'—')}</dd>
@@ -1131,7 +1137,7 @@ function render(){
   }else if(cons){
     $('res').innerHTML=list.slice(0,lim).map(x=>{
       const r=x.r,ok=r[6]==='Trabalhando';
-      return `<div class="card"><div class="nome"><span>${hl(r[0],terms)}</span><button class="cp" data-v="${esc(r[0])}">Copiar nome</button><button class="cp fa" data-i="${x.i}">Fazer autorização →</button><button class="cp dm" data-i="${x.i}">Demitir</button></div>
+      return `<div class="card"><div class="nome"><span class="fn" data-i="${x.i}" title="Ver ficha completa">${hl(r[0],terms)}</span><button class="cp" data-v="${esc(r[0])}">Copiar nome</button><button class="cp fa" data-i="${x.i}">Fazer autorização →</button><button class="cp dm" data-i="${x.i}">Demitir</button></div>
       <dl class="dl"><dt>Empresa</dt><dd>${esc(r[1])}</dd>
       <dt>Departamento</dt><dd>${esc(r[2]||'—')}</dd>
       <dt>CPF</dt><dd><span class="cpf">${esc(r[3])}</span> <button class="cp" data-v="${esc(r[3])}">Copiar</button> <button class="cp" data-v="${cpfKey(r[3])}">Só números</button></dd>
@@ -1207,6 +1213,8 @@ function copia(v,b){
   if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(v).then(done,fb);else fb();
 }
 $('res').addEventListener('click',ev=>{
+  const fn=ev.target.closest('.fn');
+  if(fn){abreFicha(+fn.dataset.i);return}
   const dm=ev.target.closest('button.dm');
   if(dm){abreDemitir(+dm.dataset.i);return}
   const re=ev.target.closest('button.re');
@@ -1802,6 +1810,29 @@ const SITS=['Trabalhando'];
 function fmtCpf(c){const d=cpfKey(c);return d.length===11?d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):String(c||'').trim()}
 function abre(id){$(id).style.display='block';window.scrollTo(0,0)}
 function fecha(id){$(id).style.display='none'}
+
+/* ---------- Ficha completa do funcionário ---------- */
+function idadeDe(br){const m=/^(\d\d)\/(\d\d)\/(\d{4})$/.exec(br||'');if(!m)return '';const h=new Date(),n=new Date(+m[3],+m[2]-1,+m[1]);let a=h.getFullYear()-n.getFullYear();if(h<new Date(h.getFullYear(),n.getMonth(),n.getDate()))a--;return a}
+function abreFicha(i){
+  const r=DATA[i];if(!r)return;const e=r[10]||{};
+  const L=(rot,val,btn)=>(val===''||val==null)?'':`<dt>${rot}</dt><dd>${esc(String(val))}${btn||''}</dd>`;
+  const sec=(t,itens)=>{const h=itens.join('');return h?`<h3 style="font-size:13px;margin:14px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em">${t}</h3><dl class="dl" style="grid-template-columns:150px 1fr">${h}</dl>`:''};
+  const sal=e.salario!=null&&e.salario!==''?Number(e.salario).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
+  const rg=[e.rg,e.orgao_rg,e.uf_rg].filter(Boolean).join(' · ');
+  const nasc=e.nascimento?e.nascimento+(idadeDe(e.nascimento)!==''?' ('+idadeDe(e.nascimento)+' anos)':''):'';
+  const nat=[e.cidade_nasc,e.uf_nasc].filter(Boolean).join('/');
+  const end=[e.endereco,e.numero].filter(Boolean).join(', ')+(e.complemento?' · '+e.complemento:'');
+  const cod=[e.cod_empresa&&('empresa '+e.cod_empresa),e.cod_empregado&&('empregado '+e.cod_empregado),e.cod_esocial&&('eSocial '+e.cod_esocial)].filter(Boolean).join(' · ');
+  $('fiNome').textContent=r[0];
+  $('fiCorpo').innerHTML=
+    sec('Contrato',[L('Empresa',r[1]),L('Departamento',r[2]),L('Cargo',r[4]),L('Função',e.funcao),L('CBO',e.cbo),L('Centro de custo',e.centro_custo),L('Tipo',e.tipo_pagamento),L('Salário',sal),L('Admissão',r[5]),L('Fim do determinado',e.fim_determinado),L('Fim da prorrogação',e.fim_prorrogacao),L('Situação',r[6]),L('Demissão',r[8]),L('Motivo',r[9]),L('Sindicato',e.sindicato),L('Códigos',cod)])+
+    sec('Documentos',[L('CPF',r[3],` <button class="cp" data-v="${esc(r[3])}">Copiar</button> <button class="cp" data-v="${cpfKey(r[3])}">Só números</button>`),L('PIS',e.pis),L('RG',rg),L('Expedição do RG',e.data_exp_rg)])+
+    sec('Dados pessoais',[L('Nascimento',nasc),L('Naturalidade',nat),L('País',e.pais_nasc),L('Endereço',end)])+
+    (r[10]?'':'<div class="ext" style="margin-top:12px">Os dados completos (salário, RG, PIS, endereço…) ainda não foram importados para este funcionário. Use "Importar relatório" com a planilha de empregados ativos.</div>');
+  abre('mFicha');
+}
+$('fiFechar').onclick=()=>fecha('mFicha');
+$('fiCorpo').addEventListener('click',ev=>{const b=ev.target.closest('button.cp');if(b)copia(b.dataset.v,b)});
 function opcoesEmpresa(sel,extra){
   const nomes=[...new Set(DATA.map(r=>r[1]))].sort();
   sel.innerHTML=nomes.map(n=>`<option>${esc(n)}</option>`).join('')+(extra||'');
@@ -1964,6 +1995,7 @@ function relatorioERP(rows){
 /* Relatório "Empregados em Excel - Apenas Ativos" (várias empresas, cabeçalho repetido a cada página).
    As colunas dos dados ficam em posições fixas (os títulos ficam deslocados por causa das células mescladas). */
 const ATV={nome:3,adm:12,cargo:41,emp:94,dep:113,cpf:147};
+const ATX={cod_empresa:0,cod_empregado:1,cod_esocial:10,fim_determinado:16,fim_prorrogacao:20,salario:26,tipo_pagamento:31,categoria:37,cbo:54,funcao:63,cod_centro_custo:75,centro_custo:80,sindicato:132,pis:152,rg:162,uf_rg:171,orgao_rg:177,data_exp_rg:182,nascimento:189,cidade_nasc:201,uf_nasc:213,pais_nasc:219,endereco:226,numero:243,complemento:248};
 function ehRelatorioAtivos(rows){
   return rows.slice(0,6).some(r=>{const t=r.map(c=>norm(String(c)));return t.includes('COD EMP')&&t.includes('COD EPR')&&t.some(x=>x.includes('CCUSTO'))});
 }
@@ -1979,7 +2011,16 @@ function relatorioAtivos(rows){
     const adm=dataCel(r[ATV.adm]);
     const emp=tx(r,ATV.emp);
     if(!/^\d{9,11}$/.test(cpf)||!emp){ign++;continue}
-    linhas.push([nome,cpf.padStart(11,'0'),mapEmp(emp),tx(r,ATV.dep),tx(r,ATV.cargo),/^\d\d\/\d\d\/\d{4}$/.test(adm)?adm:'','Trabalhando']);
+    const ex={};
+    for(const k in ATX){
+      let v=tx(r,ATX[k]);
+      if(['fim_determinado','fim_prorrogacao','data_exp_rg','nascimento'].includes(k))v=dataCel(r[ATX[k]]);
+      if(k==='salario'){const n=parseFloat(v.replace(/\./g,'').replace(',','.'));v=isNaN(n)?'':n}
+      if(k==='pis'||k==='cbo')v=String(v).replace(/\D/g,'');
+      ex[k]=v;
+    }
+    ex.centro_custo=tx(r,ATX.centro_custo);
+    linhas.push([nome,cpf.padStart(11,'0'),mapEmp(emp),tx(r,ATV.dep),tx(r,ATV.cargo),/^\d\d\/\d\d\/\d{4}$/.test(adm)?adm:'','Trabalhando',ex]);
   }
   return {hdr:['Nome','CPF','Empresa','Departamento','Cargo','Admissão','Situação'],linhas};
 }
@@ -1993,7 +2034,9 @@ function montaReg(r){
   let cpf=cpfKey(g('cpf'));if(cpf&&cpf.length<11&&cpf.length>=9)cpf=cpf.padStart(11,'0');
   if(!nome||cpf.length!==11)return null;
   const sit=String(g('sit')).trim()||'Trabalhando';
-  return [nome,String(IMP.sel.emp>=0?g('emp'):$('iEmpPad').value).trim(),String(g('dep')).trim(),fmtCpf(cpf),String(g('cargo')).trim(),txtData(g('adm')),sit,(SITCOD[sit]||(/trabalh/i.test(sit)?1:5))];
+  const reg=[nome,String(IMP.sel.emp>=0?g('emp'):$('iEmpPad').value).trim(),String(g('dep')).trim(),fmtCpf(cpf),String(g('cargo')).trim(),txtData(g('adm')),sit,(SITCOD[sit]||(/trabalh/i.test(sit)?1:5))];
+  if(r[7]&&typeof r[7]==='object')reg[10]=r[7];
+  return reg;
 }
 function atualizaImp(){
   IMP.sel={};
@@ -2797,17 +2840,21 @@ $('logo').src=LOGOS.SITE.d;
 const SB=supabase.createClient('https://akbaedovgdyfryqfseya.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrYmFlZG92Z2R5ZnJ5cWZzZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMzkwMTksImV4cCI6MjEwODYxNTAxOX0.Lz45OvDw4vc4965e51lG91u0JgFqc83NNth_4Vf8YOI');
 const sbBR=d=>d?String(d).split('-').reverse().join('/'):'';
 const sbISO=d=>{const m=/^(\d\d)\/(\d\d)\/(\d{4})$/.exec(d||'');return m?m[3]+'-'+m[2]+'-'+m[1]:null};
+const EXTRA_COLS=['cod_empresa','cod_empregado','cod_esocial','fim_determinado','fim_prorrogacao','salario','tipo_pagamento','categoria','cbo','funcao','cod_centro_custo','centro_custo','sindicato','pis','rg','uf_rg','orgao_rg','data_exp_rg','nascimento','cidade_nasc','uf_nasc','pais_nasc','endereco','numero','complemento'];
+const EXTRA_DATAS=['fim_determinado','fim_prorrogacao','data_exp_rg','nascimento'];
+function extrasParaDb(e){const o={};EXTRA_COLS.forEach(k=>{let v=e[k];if(v===''||v==null)v=null;else if(EXTRA_DATAS.includes(k))v=sbISO(v);o[k]=v});return o}
+function extrasDoDb(r){const e={};EXTRA_COLS.forEach(k=>{let v=r[k];if(v==null||v==='')return;if(EXTRA_DATAS.includes(k))v=sbBR(v);e[k]=v});return Object.keys(e).length?e:null}
 async function sbCarrega(){
   const all=[];
   for(let from=0;;from+=1000){
     const {data,error}=await SB.from('funcionarios').select('*').order('nome').range(from,from+999);
     if(error)throw error;all.push(...data);if(data.length<1000)break;
   }
-  return all.map(r=>[r.nome,r.empresa,r.departamento||'',fmtCpf(r.cpf),r.cargo||'',sbBR(r.admissao),r.situacao||'Trabalhando',r.cod_situacao==null?1:r.cod_situacao,sbBR(r.data_demissao),r.motivo_demissao||'']);
+  return all.map(r=>[r.nome,r.empresa,r.departamento||'',fmtCpf(r.cpf),r.cargo||'',sbBR(r.admissao),r.situacao||'Trabalhando',r.cod_situacao==null?1:r.cod_situacao,sbBR(r.data_demissao),r.motivo_demissao||'',extrasDoDb(r)]);
 }
 async function sbGrava(regs,opt){
   opt=opt||{};const t0=new Date().toISOString(),seen=new Map();
-  regs.forEach(r=>{const o={nome:r[0],empresa:r[1],departamento:r[2]||null,cpf:cpfKey(r[3]),cargo:r[4]||null,admissao:sbISO(r[5]),situacao:r[6]||'Trabalhando',cod_situacao:r[7]==null?1:r[7],atualizado_em:t0};seen.set(o.cpf+'|'+o.empresa+'|'+(o.admissao||''),o)});
+  regs.forEach(r=>{const o={nome:r[0],empresa:r[1],departamento:r[2]||null,cpf:cpfKey(r[3]),cargo:r[4]||null,admissao:sbISO(r[5]),situacao:r[6]||'Trabalhando',cod_situacao:r[7]==null?1:r[7],atualizado_em:t0};if(r[10])Object.assign(o,extrasParaDb(r[10]));seen.set(o.cpf+'|'+o.empresa+'|'+(o.admissao||''),o)});
   const rows=[...seen.values()];
   for(let i=0;i<rows.length;i+=300){
     const {error}=await SB.from('funcionarios').upsert(rows.slice(i,i+300),{onConflict:'cpf,empresa,admissao'});
@@ -2940,3 +2987,4 @@ setTab('home');
 </script>
 </body>
 </html>
+      
