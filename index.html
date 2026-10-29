@@ -355,6 +355,10 @@ button.sm:hover{border-color:var(--ac)}
         <div><h2>Modelo da planilha</h2><div class="ext" id="mDesc" style="margin:0"></div></div>
         <div class="seg" id="mSeg"><button data-m="simples">Simplificada</button><button data-m="completa">Completa</button></div>
       </div>
+      <div class="sel" id="pBox" style="margin-top:12px;display:none">
+        <div><h2 style="font-size:15px">Percentual da hora extra</h2><div class="ext" style="margin:0">Hora extra dos dias com jornada (HN). A HE 100% é calculada sozinha nos dias sem HN (sábado, domingo, feriado e folga trabalhados).</div></div>
+        <div class="seg" id="pSeg"><button data-p="60">HE 60%</button><button data-p="50">HE 50%</button></div>
+      </div>
     </div>
     <div class="card">
       <h2>Período</h2>
@@ -2040,6 +2044,8 @@ $('rest').onclick=()=>{
 /* ---------- Férias · Compensação de horas ---------- */
 let SELF=null,DIAS=[],MODELO='simples';
 try{const mm=localStorage.getItem('ferias_modelo_v1');if(mm==='completa'||mm==='simples')MODELO=mm}catch(e){}
+let HEP='60';
+try{const pp=localStorage.getItem('ferias_hepct_v1');if(pp==='50'||pp==='60')HEP=pp}catch(e){}
 const DSEM=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const TIPOS=['','Atestado','Feriado','Folga','Falta'];
 const isoD=(y,m,d)=>y+'-'+p2(m+1)+'-'+p2(d);
@@ -2091,6 +2097,12 @@ function htDia(d){
   return {tot,erro};
 }
 const MAXP=()=>MODELO==='completa'?2:3;
+/* HE normal (50/60%), HE 100% e HF do dia. Dia sem HN trabalhado = tudo HE 100% (a menos que se digite outro valor à mão). */
+function heDia(d){
+  const n=toMin(d.hn)||0,ht=htDia(d).tot,man=toMin(d.he);
+  if(n===0&&ht>0)return {n,ht,e5:0,e1:man!=null?man:ht,hf:0,auto:man==null};
+  return {n,ht,e5:Math.max(0,ht-n),e1:man||0,hf:Math.max(0,n-ht),auto:false};
+}
 function atInfo(d){
   const a=toMin(d.at&&d.at[0]),b=toMin(d.at&&d.at[1]);
   if(a==null&&b==null)return {vazio:true,min:0,erro:false};
@@ -2123,7 +2135,7 @@ function renderDias(){
     const par=d.pares.map((p,j)=>`<span class="par"><input type="time" data-i="${i}" data-j="${j}" data-w="0" value="${p[0]}" title="Entrada"><input type="time" data-i="${i}" data-j="${j}" data-w="1" value="${p[1]}" title="Saída"></span>`).join('');
     const mais=d.pares.length<mx?`<button class="sm" data-act="add" data-i="${i}" title="Adicionar entrada e saída">+</button>`:'';
     const menos=d.pares.length>1?`<button class="sm" data-act="del" data-i="${i}" title="Remover último par">−</button>`:'';
-    const he=comp?`<div class="hn"><label>HE 100%</label><input type="time" data-i="${i}" data-k="he" value="${d.he||''}" title="Horas extras a 100% (preencha à mão, como no modelo)"></div>`:'';
+    const he=comp?`<div class="hn"><label>HE 100%</label><input type="time" data-i="${i}" data-k="he" value="${d.he||''}" title="Horas extras a 100%: calculada sozinha nos dias sem HN; você pode digitar outro valor"><span class="mini" id="hea${i}"></span></div>`:'';
     const at=d.tp==='Atestado'?atBloco(d,i):'';
     return `<div class="dia${d.wd===0||d.wd===6?' we':''}" data-d="${i}"><div class="lin">
       <input type="checkbox" class="sel" data-i="${i}" data-k="sel" title="Marcar este dia"${d.sel?' checked':''}>
@@ -2137,8 +2149,9 @@ function renderDias(){
 function atualizaTotais(){
   let T=0,N=0,E5=0,E1=0,F=0;
   DIAS.forEach((d,i)=>{
-    const r=htDia(d),n=toMin(d.hn)||0;
-    T+=r.tot;N+=n;E5+=Math.max(0,r.tot-n);F+=Math.max(0,n-r.tot);E1+=toMin(d.he)||0;
+    const r=htDia(d),n=toMin(d.hn)||0,h=heDia(d);
+    T+=r.tot;N+=n;E5+=h.e5;F+=h.hf;E1+=h.e1;
+    const ea=document.getElementById('hea'+i);if(ea)ea.textContent=h.auto?'auto '+hm(h.e1):'';
     const el=document.getElementById('ht'+i);
     if(el){el.textContent=hm(r.tot);el.className='ht'+(r.erro?' bad':'');el.title=r.erro?'Confira entrada e saída deste dia':'Horas trabalhadas'}
   });
@@ -2147,7 +2160,7 @@ function atualizaTotais(){
   if(t0.startsWith('Há atestado')&&!DIAS.some(d=>d.tp==='Atestado'&&atInfo(d).erro))$('fErro').textContent='';
   const s=T-N,sd=`<span>Saldo: <b class="${s>=0?'pos':'neg'}">${s<0?'−':'+'}${hm(Math.abs(s))}</b></span>`;
   $('fTot').innerHTML=MODELO==='completa'
-    ?`<span>Trabalhado: <b>${hms(T)}</b></span><span>Jornada: <b>${hms(N)}</b></span><span>HE 50%: <b>${hm(E5)}</b></span><span>HE 100%: <b>${hm(E1)}</b></span><span>Faltas (HF): <b>${hm(F)}</b></span>`+sd
+    ?`<span>Trabalhado: <b>${hms(T)}</b></span><span>Jornada: <b>${hms(N)}</b></span><span>HE ${HEP}%: <b>${hm(E5)}</b></span><span>HE 100%: <b>${hm(E1)}</b></span><span>Faltas (HF): <b>${hm(F)}</b></span>`+sd
     :`<span>Trabalhado: <b>${hms(T)}</b></span><span>Jornada: <b>${hms(N)}</b></span>`+sd;
 }
 $('fDias').addEventListener('input',ev=>{
@@ -2186,12 +2199,15 @@ $('fDias').addEventListener('click',ev=>{
 }));
 function aplicaModelo(salvar){
   const c=MODELO==='completa';
+  $('pBox').style.display=c?'flex':'none';
+  document.querySelectorAll('#pSeg button').forEach(b=>b.classList.toggle('on',b.dataset.p===HEP));
   document.querySelectorAll('#mSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===MODELO));
-  $('mDesc').textContent=c?'Completa (modelo Alumicenter): até 2 pares de entrada/saída, HN, HT, HE 50%, HE 100%, HF e quadro de compensação de horas.':'Simplificada: até 3 pares de entrada/saída, HN, HT e observação do dia (atestado, feriado, folga ou falta).';
-  $('fNota').textContent=c?'Na Completa, HE 50% e HF saem da diferença entre HT e HN; a HE 100% você preenche à mão em cada dia, como no modelo. O PDF e o Excel seguem o modelo escolhido.':'O saldo (trabalhado menos jornada) aparece só aqui na tela. O PDF e o Excel seguem o modelo do relatório.';
+  $('mDesc').textContent=c?'Completa (modelo Alumicenter): até 2 pares de entrada/saída, HN, HT, HE (60% ou 50%), HE 100%, HF e quadro de compensação de horas.':'Simplificada: até 3 pares de entrada/saída, HN, HT e observação do dia (atestado, feriado, folga ou falta).';
+  $('fNota').textContent=c?'Na Completa, a HE (60% ou 50%) e a HF saem da diferença entre HT e HN; a HE 100% é calculada sozinha nos dias sem HN (sábado, domingo, feriado e folga trabalhados) e você pode digitar outro valor se precisar. O PDF e o Excel seguem o modelo escolhido.':'O saldo (trabalhado menos jornada) aparece só aqui na tela. O PDF e o Excel seguem o modelo do relatório.';
   if(salvar){try{localStorage.setItem('ferias_modelo_v1',MODELO)}catch(e){}sbSalvaPrefs()}
   renderDias();
 }
+$('pSeg').addEventListener('click',ev=>{const b=ev.target.closest('button[data-p]');if(!b)return;HEP=b.dataset.p;try{localStorage.setItem('ferias_hepct_v1',HEP)}catch(e){}sbSalvaPrefs();aplicaModelo(false)});
 $('mSeg').addEventListener('click',ev=>{const b=ev.target.closest('button[data-m]');if(!b)return;MODELO=b.dataset.m;aplicaModelo(true)});
 function aplicaRapido(filtro,rotulo){
   const p=[[$('qE1').value,$('qS1').value],[$('qE2').value,$('qS2').value]].filter(x=>x[0]||x[1]);
@@ -2365,7 +2381,7 @@ function pdfCompleta(m){
   y+=12;
   const hh=6;
   cel(0,1,y,hh,'Dia',{b:true});
-  ['Entrada','Saída','Entrada','Saída','HN','HT','HE 50%','HE 100%','HF'].forEach((t,i)=>cel(2+i,2+i,y,hh,t,{b:true,fs:8.5}));
+  ['Entrada','Saída','Entrada','Saída','HN','HT','HE '+HEP+'%','HE 100%','HF'].forEach((t,i)=>cel(2+i,2+i,y,hh,t,{b:true,fs:8.5}));
   if(obs)cel(11,11,y,hh,'Obs.',{b:true,fs:8.5});
   y+=hh;
   const rh=5.2;let tHT=0,tE5=0,tE1=0,tHF=0;
@@ -2374,7 +2390,7 @@ function pdfCompleta(m){
     cel(0,0,y,rh,d?p2(d.d)+'/'+p2(d.m):'');cel(1,1,y,rh,d?DSEM[d.wd]:'');
     for(let c=0;c<4;c++){const par=d&&d.pares[Math.floor(c/2)];const v=par?par[c%2]:'';cel(2+c,2+c,y,rh,v?v.slice(0,5):'')}
     if(d){
-      const n=toMin(d.hn)||0,ht=htDia(d).tot,e1=toMin(d.he)||0,e5=Math.max(0,ht-n),hf=Math.max(0,n-ht);
+      const {n,ht,e5,e1,hf}=heDia(d);
       tHT+=ht;tE5+=e5;tE1+=e1;tHF+=hf;
       cel(6,6,y,rh,hn1(n));cel(7,7,y,rh,hms(ht));cel(8,8,y,rh,hn1(e5));cel(9,9,y,rh,hn1(e1));cel(10,10,y,rh,hn1(hf));
       if(obs)cel(11,11,y,rh,d.tp?atObs(d,true):'',{fs:7});
@@ -2384,7 +2400,7 @@ function pdfCompleta(m){
   y+=6;
   cel(2,4,y,5.5,'Compensação de Horas',{b:true,l:true,fs:9});y+=5.5;
   const Lb=[['Saldo Anterior',''],['Horas Extras',hms(tE5+tE1)],['Horas Faltas',hms(tHF)],['Saldo Atual','']];
-  const Rb=[['Total Horas Trabalhadas',hms(tHT)],['Horas Extras 50%',hms(tE5)],['Horas Extras 100%',hms(tE1)],['Horas Falta',hms(tHF)]];
+  const Rb=[['Total Horas Trabalhadas',hms(tHT)],['Horas Extras '+HEP+'%',hms(tE5)],['Horas Extras 100%',hms(tE1)],['Horas Falta',hms(tHF)]];
   Lb.forEach((r,k)=>{
     cel(2,3,y,5.5,r[0],{l:true,b:true,fs:8.5});cel(4,4,y,5.5,r[1],{fs:8.5});
     cel(6,8,y,5.5,Rb[k][0],{l:true,b:true,fs:8.5});cel(9,10,y,5.5,Rb[k][1],{fs:8.5});
@@ -2403,6 +2419,8 @@ async function xlsxCompleta(m){
   const trocar=(s,a,b)=>{if(!s.includes(a))throw new Error('modelo inesperado: '+a.slice(0,30));return s.replace(a,()=>b)};
   let ss=await zip.file('xl/sharedStrings.xml').async('string');
   ss=trocar(ss,'<si><t>RONAN GABRIEL TAUBE</t></si>','<si><t>'+x(m.nome)+'</t></si>');
+  ss=trocar(ss,'<si><t>HE 50%</t></si>','<si><t>HE '+HEP+'%</t></si>');
+  ss=trocar(ss,'<si><t>Horas Extras 50%</t></si>','<si><t>Horas Extras '+HEP+'%</t></si>');
   zip.file('xl/sharedStrings.xml',ss);
   let sh=await zip.file('xl/worksheets/sheet1.xml').async('string');
   sh=trocar(sh,'<c r="G3" s="41" t="str"><f>UPPER(TEXT(A6,"mmmm"))</f><v>SETEMBRO</v></c>','<c r="G3" s="41" t="inlineStr"><is><t>'+x(m.mes)+'</t></is></c>');
@@ -2420,7 +2438,7 @@ async function xlsxCompleta(m){
     let cells='';
     if(!d){'ABCDEFGHIJK'.split('').forEach(c=>cells+=vz(c))}
     else{
-      const n=toMin(d.hn)||0,ht=htDia(d).tot,e1=toMin(d.he)||0,e5=Math.max(0,ht-n),hf=Math.max(0,n-ht);
+      const {n,ht,e5,e1,hf}=heDia(d);
       tHT+=ht;tE5+=e5;tE1+=e1;tHF+=hf;
       cells+='<c r="A'+r+'" s="'+st('A')+'"><v>'+d.serial+'</v></c><c r="B'+r+'" s="'+st('B')+'"><v>'+d.serial+'</v></c>';
       ['C','D','E','F'].forEach((col,c)=>{
@@ -2429,7 +2447,7 @@ async function xlsxCompleta(m){
       });
       cells+='<c r="G'+r+'" s="'+st('G')+'"><v>'+(n/1440)+'</v></c>';
       cells+='<c r="H'+r+'" s="'+st('H')+'"><f>(D'+r+'-C'+r+')+(F'+r+'-E'+r+')</f><v>'+(ht/1440)+'</v></c>';
-      cells+='<c r="I'+r+'" s="'+st('I')+'"><f>IF(H'+r+'&gt;G'+r+',H'+r+'-G'+r+',0)</f><v>'+(e5/1440)+'</v></c>';
+      cells+=(n===0&&ht>0)?'<c r="I'+r+'" s="'+st('I')+'"><v>0</v></c>':'<c r="I'+r+'" s="'+st('I')+'"><f>IF(H'+r+'&gt;G'+r+',H'+r+'-G'+r+',0)</f><v>'+(e5/1440)+'</v></c>';
       cells+='<c r="J'+r+'" s="'+st('J')+'"><v>'+(e1/1440)+'</v></c>';
       cells+='<c r="K'+r+'" s="'+st('K')+'"><f>IF(G'+r+'&gt;H'+r+',G'+r+'-H'+r+',0)</f><v>'+(hf/1440)+'</v></c>';
     }
@@ -2690,6 +2708,7 @@ async function sbCarregaExtras(){
   const mescla=(loc,rem)=>(mig&&rem)?rem:Object.assign({},loc,rem||{});
   SAVED=mescla(SAVED,R._empresas);PROL=mescla(PROL,R._prolabore);
   const pf=R._prefs&&R._prefs.ferias_modelo;if(pf==='completa'||pf==='simples')MODELO=pf;
+  const pq=R._prefs&&R._prefs.ferias_hepct;if(pq==='50'||pq==='60')HEP=pq;
   const pt=R._prefs&&R._prefs.tema;if(pt==='light'||pt==='dark')aplicaTema(pt,false);
   try{localStorage.setItem('desc_empresas_v1',JSON.stringify(SAVED));localStorage.setItem('prolabore_v1',JSON.stringify(PROL));localStorage.setItem('ferias_modelo_v1',MODELO)}catch(e){}
   SYNC_KV=true;
@@ -2753,7 +2772,7 @@ $('sbSair').onclick=async()=>{await SB.auth.signOut();location.reload()};
   if(session)sbIniciaApp();else $('sbLogin').style.display='flex';
 })();
 let TEMA=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
-async function sbSalvaPrefs(){await sbSalvaKV('_prefs',{ferias_modelo:MODELO,tema:TEMA})}
+async function sbSalvaPrefs(){await sbSalvaKV('_prefs',{ferias_modelo:MODELO,ferias_hepct:HEP,tema:TEMA})}
 function aplicaTema(t,salvar){
   TEMA=t==='light'?'light':'dark';
   document.documentElement.setAttribute('data-theme',TEMA);
