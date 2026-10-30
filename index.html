@@ -447,6 +447,19 @@ button.sm:hover{border-color:var(--ac)}
   <div class="msg bad" id="dErro"></div>
   <div class="actions"><button class="btn" id="dSalvar">Confirmar demissão</button><button class="btn sec" id="dCancel">Cancelar</button></div>
 </div></div>
+<div class="modal" id="mEmpNova"><div class="box2">
+  <h2>Nova empresa</h2>
+  <div class="grid">
+    <div class="full"><label for="neRazao">Razão social *</label><input id="neRazao" autocomplete="off"></div>
+    <div><label for="neCnpj">CNPJ *</label><input id="neCnpj" inputmode="numeric" placeholder="00.000.000/0000-00" autocomplete="off"></div>
+    <div><label for="neCep">CEP</label><input id="neCep" placeholder="00000-000" autocomplete="off"></div>
+    <div class="full"><label for="neEnd">Endereço</label><input id="neEnd" placeholder="Rua, número, bairro, Cidade/UF" autocomplete="off"></div>
+    <div class="full"><label for="neCidade">Cidade/UF (local e data nos documentos)</label><input id="neCidade" placeholder="Nova Santa Rosa/PR" autocomplete="off"></div>
+  </div>
+  <div class="ext">Os funcionários você adiciona depois, na página da empresa.</div>
+  <div class="msg bad" id="neErro"></div>
+  <div class="actions"><button class="btn" id="neSalvar">Salvar empresa</button><button class="btn sec" id="neCancel">Cancelar</button></div>
+</div></div>
 <div class="modal" id="mNovo"><div class="box2">
   <h2>Novo funcionário</h2>
   <div class="grid">
@@ -976,6 +989,11 @@ function chaveEmp(nome){
   for(const k in EMP){const nk=norm(k);
     if(n===nk||(n.length>=12&&(n.startsWith(nk)||nk.startsWith(n)))||norm(EMP[k].razao)===n)return k}
   return nome;
+}
+function nomesEmpresas(){ // empresas com funcionários + empresas criadas pelo botão "Nova empresa"
+  const st=new Set(DATA.map(r=>r[1]));
+  Object.keys(SAVED).forEach(k=>{if(SAVED[k]&&SAVED[k].criada)st.add(k)});
+  return [...st];
 }
 function empresaDe(key){
   const base=EMP[chaveEmp(key)]||{razao:key,cnpj:'',end:'',cidade:NSR,tpl:null};
@@ -1906,7 +1924,7 @@ $('fiCorpo').addEventListener('click',async ev=>{
   try{render()}catch(e){}
 });
 function opcoesEmpresa(sel,extra){
-  const nomes=[...new Set(DATA.map(r=>r[1]))].sort();
+  const nomes=nomesEmpresas().sort();
   sel.innerHTML=nomes.map(n=>`<option>${esc(n)}</option>`).join('')+(extra||'');
 }
 let NOVOEMP=false;
@@ -2048,7 +2066,7 @@ function relatorioERP(rows){
   const ci=lab=>H.findIndex(x=>x.includes(lab));
   const cNome=ci('NOME'),cCargo=ci('CARGO'),cAdm=ci('ADMISSAO'),cSit=ci('SITUACAO');
   const jan=(r,c,a,b)=>{const o=[];for(let k=c-a;k<=c+b;k++)if(k>=0&&r[k]!==''&&r[k]!=null)o.push(r[k]);return o};
-  const nomesEmp=[...new Set(DATA.map(r=>r[1]))];
+  const nomesEmp=nomesEmpresas();
   const mapEmp=n=>{const k=norm(n).slice(0,40);return nomesEmp.find(e=>norm(e).slice(0,40)===k)||n.slice(0,40)};
   const dep=(cpf,emp)=>{const a=DATA.find(r=>cpfKey(r[3])===cpf&&r[1]===emp)||DATA.find(r=>cpfKey(r[3])===cpf);return a?a[2]:''};
   let emp='';const linhas=[];
@@ -2074,7 +2092,7 @@ function ehRelatorioAtivos(rows){
   return rows.slice(0,6).some(r=>{const t=r.map(c=>norm(String(c)));return t.includes('COD EMP')&&t.includes('COD EPR')&&t.some(x=>x.includes('CCUSTO'))});
 }
 function relatorioAtivos(rows){
-  const nomesEmp=[...new Set(DATA.map(r=>r[1]))];
+  const nomesEmp=nomesEmpresas();
   const mapEmp=n=>{const k=norm(n).slice(0,40);return nomesEmp.find(e=>norm(e).slice(0,40)===k)||n.slice(0,40)};
   const tx=(r,i)=>{const v=r[i];return v instanceof Date?txtData(v):String(v==null?'':v).trim()};
   const linhas=[];let ign=0;
@@ -2157,7 +2175,7 @@ function lerRelacaoEmp(rows){
   return {recs,campos:[...campos]};
 }
 function relatorioRelacoes(arqs){ // arqs=[{nome,rows}]
-  const nomesEmp=[...new Set(DATA.map(r=>r[1]))];
+  const nomesEmp=nomesEmpresas();
   // nome exato primeiro: filiais com nomes quase iguais (ex.: OPÇÃOTELECOM e OPCAOTELECOM) não podem virar uma só
   const mapEmp=n=>{const k=norm(n).slice(0,40);return nomesEmp.find(e=>e===n)||nomesEmp.find(e=>norm(e).slice(0,40)===k)||n.slice(0,40)};
   const acc=new Map(),info=[];
@@ -2914,6 +2932,7 @@ function cardEmp(n,qt){
 function renderEmp(){
   const q=norm($('eq').value.trim());
   const cont=new Map();DATA.forEach(r=>cont.set(r[1],(cont.get(r[1])||0)+1));
+  nomesEmpresas().forEach(n=>{if(!cont.has(n))cont.set(n,0)});
   const todos=[...cont.keys()].sort((a,b)=>cont.get(b)-cont.get(a));
   const comp=todos.filter(n=>{const e=empresaDe(n);return e.cnpj&&e.end}).length;
   const lista=todos.filter(n=>{const e=empresaDe(n);return !q||norm(n+' '+e.razao+' '+e.cnpj).includes(q)});
@@ -2921,7 +2940,27 @@ function renderEmp(){
   $('eList').innerHTML=lista.map(n=>cardEmp(n,cont.get(n))).join('')||'<div class="empty">Nenhuma empresa encontrada.</div>';
 }
 $('eq').addEventListener('input',renderEmp);
-$('eNova').onclick=()=>abreNovoEmp(null);
+function cnpjOk(d){
+  if(!/^\d{14}$/.test(d)||/^(\d)\1+$/.test(d))return false;
+  const dv=n=>{let p=n-7,t=0;for(let i=0;i<n;i++){t+=+d[i]*p--;if(p<2)p=9}const r=t%11;return r<2?0:11-r};
+  return dv(12)===+d[12]&&dv(13)===+d[13];
+}
+$('eNova').onclick=()=>{
+  ['neRazao','neCnpj','neCep','neEnd','neCidade'].forEach(i=>$(i).value='');
+  $('neErro').textContent='';abre('mEmpNova');$('neRazao').focus();
+};
+$('neCancel').onclick=()=>fecha('mEmpNova');
+$('neCnpj').addEventListener('blur',()=>{const v=$('neCnpj').value.trim();if(v)$('neCnpj').value=fmtCnpj(v)});
+$('neSalvar').onclick=()=>{
+  const razao=$('neRazao').value.trim().replace(/\s+/g,' ').toUpperCase(),dig=$('neCnpj').value.replace(/\D/g,''),er=$('neErro');
+  if(!razao){er.textContent='Informe a razão social.';return}
+  if(dig.length!==14){er.textContent='Informe o CNPJ com 14 dígitos.';return}
+  if(!cnpjOk(dig)){er.textContent='Esse CNPJ não parece válido. Confira os números.';return}
+  const ja=nomesEmpresas().find(n=>norm(n)===norm(razao)||String(empresaDe(n).cnpj||'').replace(/\D/g,'')===dig);
+  if(ja){er.textContent='Essa empresa já está cadastrada: '+ja+'.';return}
+  salvaEmpresa(razao,{razao,cnpj:fmtCnpj(dig),end:$('neEnd').value.trim(),cidade:$('neCidade').value.trim()||NSR,cep:$('neCep').value.trim(),criada:true});
+  fecha('mEmpNova');renderEmp();abrirEmp(razao,false);
+};
 $('eList').addEventListener('click',ev=>{
   const cp=ev.target.closest('button.cp');if(cp){copia(cp.dataset.v,cp);return}
   if(ev.target.closest('a'))return;
@@ -2963,7 +3002,7 @@ function renderEmpDet(){
       <dt>Modelo de documento</dt><dd>${e.tpl?esc(TPLNOME[e.tpl]):'sem modelo (cabeçalho simples)'}</dd>
       ${n!==e.razao?'<dt>Nome no cadastro</dt><dd>'+esc(n)+'</dd>':''}
       <dt>Situação dos funcionários</dt><dd>${Object.keys(sit).map(k=>'<span class="tag '+(k==='Trabalhando'?'ok':'wn')+'">'+esc(k)+': '+sit[k]+'</span>').join(' ')||'—'}</dd></dl>
-    <div class="actions" style="margin-top:14px"><button class="btn sec" data-act="edit">${ok?'Editar dados':'Completar dados'}</button><a class="btn sec" style="text-decoration:none;display:inline-block" href="${g}" target="_blank" rel="noopener noreferrer">Pesquisar no Google</a>${ok?'<button class="cp" data-v="'+esc(e.razao+' · CNPJ '+e.cnpj+' · '+e.end)+'">Copiar tudo</button>':''}</div>`;
+    <div class="actions" style="margin-top:14px"><button class="btn sec" data-act="edit">${ok?'Editar dados':'Completar dados'}</button><a class="btn sec" style="text-decoration:none;display:inline-block" href="${g}" target="_blank" rel="noopener noreferrer">Pesquisar no Google</a>${(qt===0&&e.criada)?'<button class="btn sec" data-act="delemp">Excluir empresa</button>':''}${ok?'<button class="cp" data-v="'+esc(e.razao+' · CNPJ '+e.cnpj+' · '+e.end)+'">Copiar tudo</button>':''}</div>`;
   $('empDet').innerHTML=`<div class="card">
     <button class="lnk" data-act="back">← Todas as empresas</button>
     <div class="edhead"><div class="elogo">${logoEmp(e)}</div><div><div class="ednome">${esc(e.razao)}</div><div>${tags}</div></div></div>
@@ -3009,6 +3048,7 @@ function renderEmpFuncs(){
   const q=norm(($('edq').value||'').trim());
   const rows=[];DATA.forEach((r,i)=>{if(r[1]===n&&(!q||norm([r[0],r[2],r[4]].join(' ')).includes(q)))rows.push(i)});
   const tot=DATA.filter(r=>r[1]===n).length;
+  if(!tot){$('edCnt').textContent='';$('edTb').innerHTML='<tr><td colspan="6" class="empty">Nenhum funcionário ainda. Use "+ Funcionário" ou "Importar relatório" (na Consulta).</td></tr>';return}
   $('edCnt').textContent=(q?rows.length+' de ':'')+tot+(tot===1?' pessoa':' pessoas');
   $('edTb').innerHTML=rows.slice(0,300).map(i=>{const r=DATA[i],okk=r[6]==='Trabalhando';
     return `<tr><td>${esc(r[0])}</td><td>${esc(r[4]||'—')}</td><td>${esc(r[2]||'—')}</td><td>${esc(r[5]||'—')}</td><td><span class="tag ${okk?'ok':'wn'}">${esc(r[6])}</span></td><td style="white-space:nowrap"><button class="cp" data-act="aut" data-i="${i}">Autorização</button> <button class="cp" data-act="fer" data-i="${i}">Férias</button></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">Nenhum funcionário encontrado.</td></tr>';
@@ -3025,6 +3065,7 @@ $('empDet').addEventListener('click',ev=>{
   if(act==='psave'){salvaSocio();return}
   if(act==='pdel'){const l=PROL[EMPDET]||[],r=l[+b.dataset.i];if(r&&confirm('Remover '+r.nome+'?')){l.splice(+b.dataset.i,1);salvaProl();renderProl()}return}
   if(act==='addf'){abreNovoEmp(EMPDET);return}
+  if(act==='delemp'){if(confirm('Excluir a empresa '+EMPDET+'? Ela ainda não tem funcionários.')){salvaEmpresa(EMPDET,{criada:false});voltarEmp()}return}
   if(act==='edit'){EDITD=true;renderEmpDet();return}
   if(act==='cancel'){EDITD=false;renderEmpDet();return}
   if(act==='aut'){setTab('desconto');selecionar(+b.dataset.i);return}
