@@ -480,8 +480,8 @@ button.sm:hover{border-color:var(--ac)}
 
 <div class="modal" id="mImp"><div class="box2">
   <h2>Importar relatório</h2>
-  <div class="mini" style="margin-bottom:10px">Aceita Excel (.xlsx, .xls) e CSV com uma linha de cabeçalho (Nome, CPF, Empresa, Departamento, Cargo, Admissão, Situação). Também dá para colar as linhas copiadas direto do Excel.</div>
-  <input type="file" id="iFile" accept=".xlsx,.xls,.csv,.txt,.tsv">
+  <div class="mini" style="margin-bottom:10px">Aceita Excel (.xlsx, .xls) e CSV com uma linha de cabeçalho (Nome, CPF, Empresa, Departamento, Cargo, Admissão, Situação). Também lê os relatórios "Relação de Empregados" do sistema (I, II, Pessoal, Profissional I e II): dá para escolher vários de uma vez, que o portal junta as informações de cada um. Também dá para colar as linhas copiadas direto do Excel.</div>
+  <input type="file" id="iFile" accept=".xlsx,.xls,.csv,.txt,.tsv" multiple>
   <div class="mini" style="margin:8px 0 4px">ou cole aqui:</div>
   <textarea id="iPaste" placeholder="Cole as linhas (com o cabeçalho) copiadas do Excel"></textarea>
   <div id="iMap" style="display:none;margin-top:14px">
@@ -1145,6 +1145,19 @@ function certsHtml(nome){
     else{cls='v-ok';st='Válido'}
     return `<div class="cert ${cls}"><b>${rot}</b><span class="dt">${fmtCert(ini)}</span><span class="vc">Vence ${fmtCert(venc)}</span><span class="st">${st}</span></div>`;
   }).join('')+'</div>';
+}
+/* edição de NR/ASO na ficha: grava na tabela certificados (chave = nome normalizado) */
+const CERT_COLS=['nr06','nr10','nr35','aso'];
+let CERT_ED=null;
+function certsFicha(nome,reset){
+  if(reset)CERT_ED=null;
+  const k=certKey(nome),c=CERTS[k]||[null,null,null,null];
+  const a='<div id="certBox" data-nome="'+esc(nome)+'">';
+  if(CERT_ED!==k)return a+certsHtml(nome)+'<div class="actions" style="margin-top:8px"><button class="btn sec" id="certEd">Editar NRs e ASO</button></div></div>';
+  return a+'<div class="certs">'+CERT_DEF.map((d,i)=>{
+    const v=c[i],na=v==='N';
+    return `<div class="cert"><b>${d[0]}</b><input type="date" class="cin" data-i="${i}" value="${na||!v?'':esc(v)}"${na?' disabled':''}><label style="display:flex;gap:6px;align-items:center;margin:6px 0 0;font-size:13px;color:var(--tx)"><input type="checkbox" class="cna" data-i="${i}" style="width:auto"${na?' checked':''}> Não precisa</label><span class="vc">Data da realização · vale ${d[1]} ${d[1]>1?'anos':'ano'}</span></div>`
+  }).join('')+'</div><div class="actions"><button class="btn" id="certSalva">Salvar</button><button class="btn sec" id="certCancela">Cancelar</button></div><div class="msg bad" id="certErro"></div></div>';
 }
 function render(){
   const raw=$('q').value.trim(),digits=raw.replace(/\D/g,'');
@@ -1860,12 +1873,37 @@ function abreFicha(i){
     sec('Contrato',[L('Empresa',r[1]),L('Departamento',r[2]),L('Cargo',r[4]),L('Função',e.funcao),L('CBO',e.cbo),L('Centro de custo',e.centro_custo),L('Tipo',e.tipo_pagamento),L('Salário',sal),L('Admissão',r[5]),L('Fim do determinado',e.fim_determinado),L('Fim da prorrogação',e.fim_prorrogacao),L('Situação',r[6]),L('Demissão',r[8]),L('Motivo',r[9]),L('Sindicato',e.sindicato),L('Códigos',cod)])+
     sec('Documentos',[L('CPF',r[3],` <button class="cp" data-v="${esc(r[3])}">Copiar</button> <button class="cp" data-v="${cpfKey(r[3])}">Só números</button>`),L('PIS',e.pis),L('RG',rg),L('Expedição do RG',e.data_exp_rg)])+
     sec('Dados pessoais',[L('Nascimento',nasc),L('Naturalidade',nat),L('País',e.pais_nasc),L('Endereço',end)])+
-    '<h3 style="font-size:13px;margin:14px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em">NRs e ASO</h3>'+certsHtml(r[0])+
+    '<h3 style="font-size:13px;margin:14px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em">NRs e ASO</h3>'+certsFicha(r[0],true)+
     (r[10]?'':'<div class="ext" style="margin-top:12px">Os dados completos (salário, RG, PIS, endereço…) ainda não foram importados para este funcionário. Use "Importar relatório" com a planilha de empregados ativos.</div>');
   abre('mFicha');
 }
 $('fiFechar').onclick=()=>fecha('mFicha');
 $('fiCorpo').addEventListener('click',ev=>{const b=ev.target.closest('button.cp');if(b)copia(b.dataset.v,b)});
+$('fiCorpo').addEventListener('change',ev=>{
+  const t=ev.target;if(!t.classList||!t.classList.contains('cna'))return;
+  const inp=document.querySelector('.cin[data-i="'+t.dataset.i+'"]');
+  inp.disabled=t.checked;if(t.checked)inp.value='';
+});
+$('fiCorpo').addEventListener('click',async ev=>{
+  const b=ev.target.closest('button');if(!b||!['certEd','certCancela','certSalva'].includes(b.id))return;
+  const box=$('certBox'),nome=box.dataset.nome,k=certKey(nome);
+  if(b.id==='certEd'){CERT_ED=k;box.outerHTML=certsFicha(nome);return}
+  if(b.id==='certCancela'){CERT_ED=null;box.outerHTML=certsFicha(nome);return}
+  const er=$('certErro');er.textContent='';
+  const vals=[];
+  for(let i=0;i<CERT_COLS.length;i++){
+    const na=document.querySelector('.cna[data-i="'+i+'"]').checked,v=document.querySelector('.cin[data-i="'+i+'"]').value;
+    if(!na&&v&&!(/^\d{4}-\d\d-\d\d$/.test(v)&&+v.slice(0,4)>=1990&&+v.slice(0,4)<=2100)){er.textContent='Data inválida em '+CERT_DEF[i][0]+'.';return}
+    vals.push(na?'N':(v||null));
+  }
+  const row={chave:k,nome:nome,atualizado_em:new Date().toISOString()};
+  CERT_COLS.forEach((c,i)=>{row[c]=vals[i]==='N'?null:vals[i];row[c+'_nao_precisa']=vals[i]==='N'});
+  b.disabled=true;er.textContent='Salvando...';
+  const {error}=await SB.from('certificados').upsert(row,{onConflict:'chave'});
+  if(error){b.disabled=false;er.textContent='Não consegui salvar no banco: '+(error.message||error)+' (confira se a tabela "certificados" permite gravar).';return}
+  CERTS[k]=vals;CERT_ED=null;box.outerHTML=certsFicha(nome);
+  try{render()}catch(e){}
+});
 function opcoesEmpresa(sel,extra){
   const nomes=[...new Set(DATA.map(r=>r[1]))].sort();
   sel.innerHTML=nomes.map(n=>`<option>${esc(n)}</option>`).join('')+(extra||'');
@@ -1922,7 +1960,9 @@ function acha(hdr,sins){
 }
 function lerLinhas(wb){
   const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,cellDates:true,defval:''});
+  return lerLinhasRows(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,cellDates:true,defval:''}));
+}
+function lerLinhasRows(rows){
   let h=-1;
   for(let i=0;i<Math.min(rows.length,25);i++){
     const hdr=rows[i];
@@ -2057,6 +2097,113 @@ function relatorioAtivos(rows){
   }
   return {hdr:['Nome','CPF','Empresa','Departamento','Cargo','Admissão','Situação'],linhas};
 }
+/* Relatórios "Relação de Empregados" do sistema (I, II, Pessoal, Profissional I e II).
+   Aqui a empresa vem na linha de cabeçalho de cada página (a que tem "Página:") e cada relatório traz só
+   uma parte dos dados (CPF só no II e no Profissional I; cargo/admissão/situação no I, II e Profissional II;
+   nascimento/endereço no Pessoal). Por isso dá para escolher vários arquivos de uma vez: eles são cruzados
+   por empresa + código + nome. */
+function ehRelacaoEmp(rows){
+  const ini=rows.slice(0,30).map(r=>r.map(c=>norm(String(c==null?'':c)).trim()));
+  if(!ini.some(r=>r.some(c=>c.startsWith('RELACAO DE EMPREGADOS'))))return false;
+  if(rows.slice(0,300).some(r=>r.some(c=>String(c).trim()==='Filial:')))return false; // layout com "Filial:" -> relatorioERP
+  return ini.some(r=>r.includes('PAGINA:'));
+}
+function lerRelacaoEmp(rows){
+  const vz=c=>c===''||c==null||(typeof c==='string'&&!c.trim());
+  const ehData=v=>v instanceof Date||(typeof v==='number'&&v>20000&&v<80000)||/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(v).trim());
+  const ehNum=v=>/^\d+(\.0+)?$/.test(String(v).trim());
+  const ehCpf=v=>/^\d{9,11}$/.test(String(v).trim().replace(/[.\-]/g,''));
+  const ehPis=v=>/^\d{10,11}$/.test(String(v).trim().replace(/[.\-]/g,''));
+  const mapaCab=r=>{
+    const H=[];r.forEach((c,i)=>{const s=String(c==null?'':c).trim();if(s)H.push({i,l:norm(s)})});
+    const ix={},set=(k,f)=>{const j=H.findIndex(f);if(j>=0)ix[k]=j};
+    set('nome',h=>h.l==='NOME');
+    const jc=H.findIndex(h=>h.l==='CARGO');
+    if(jc>=0){const j2=H.findIndex((h,k)=>k>jc&&h.l==='NOME');ix.cargo=j2>=0?j2:jc} // no Profissional II "Cargo" é só o código e o nome vem na 2ª coluna "Nome"
+    set('adm',h=>h.l==='ADMISSAO');
+    set('sit',h=>h.l==='SITUACAO'||h.l==='ST');
+    set('cpf',h=>h.l.includes('C.P.F')||h.l==='CPF');
+    set('pis',h=>h.l==='PIS');
+    set('nasc',h=>h.l.startsWith('DATA NASC'));
+    set('end',h=>h.l==='ENDERECO');
+    set('cc',h=>h.l==='C.CUSTO');
+    return {H,ix};
+  };
+  // os dados ficam 1 ou 2 colunas fora do título (células mescladas): olha só a faixa da própria coluna
+  const pega=(r,m,k,ok)=>{
+    const j=m.ix[k];if(j==null)return '';
+    const h=m.H[j],lo=Math.max(h.i-2,j>0?m.H[j-1].i+1:0),hi=j+1<m.H.length?m.H[j+1].i-1:r.length-1;
+    const cand=[];for(let d=0;d<=2;d++){cand.push(h.i-d);if(d)cand.push(h.i+d)}
+    for(const c of cand){if(c<lo||c>hi)continue;const v=r[c];if(vz(v))continue;if(!ok||ok(v))return v}
+    return '';
+  };
+  const NOMES={cpf:'CPF',cargo:'cargo',adm:'admissão',sit:'situação',pis:'PIS',nasc:'nascimento',end:'endereço',cc:'centro de custo'};
+  let emp='',m=null;const recs=[],campos=new Set();
+  for(const r of rows){
+    const t=r.map(c=>String(c==null?'':c).trim());
+    if(t.some(x=>norm(x)==='PAGINA:')){emp=t.find(x=>x&&norm(x)!=='PAGINA:')||emp;m=null;continue}
+    if(norm(t[0])==='CODIGO'){m=mapaCab(r);Object.keys(m.ix).forEach(k=>NOMES[k]&&campos.add(NOMES[k]));continue}
+    if(!m||!emp||!/^\d+(\.0+)?$/.test(t[0]))continue;
+    const nome=String(pega(r,m,'nome')).trim();if(!nome)continue;
+    recs.push({emp,cod:String(parseInt(t[0],10)),nome,
+      cpf:String(pega(r,m,'cpf',ehCpf)).trim().replace(/\D/g,''),
+      cargo:String(pega(r,m,'cargo')).trim(),
+      adm:pega(r,m,'adm',ehData),sit:pega(r,m,'sit',ehNum),
+      pis:String(pega(r,m,'pis',ehPis)).replace(/\D/g,''),
+      nasc:pega(r,m,'nasc',ehData),end:String(pega(r,m,'end')).trim(),
+      cc:String(pega(r,m,'cc',ehNum)).trim().replace(/\.0+$/,'')});
+  }
+  return {recs,campos:[...campos]};
+}
+function relatorioRelacoes(arqs){ // arqs=[{nome,rows}]
+  const nomesEmp=[...new Set(DATA.map(r=>r[1]))];
+  // nome exato primeiro: filiais com nomes quase iguais (ex.: OPÇÃOTELECOM e OPCAOTELECOM) não podem virar uma só
+  const mapEmp=n=>{const k=norm(n).slice(0,40);return nomesEmp.find(e=>e===n)||nomesEmp.find(e=>norm(e).slice(0,40)===k)||n.slice(0,40)};
+  const acc=new Map(),info=[];
+  for(const a of arqs){
+    const {recs,campos}=lerRelacaoEmp(a.rows);
+    info.push(a.nome+': '+recs.length+' linhas ('+(campos.join(', ')||'só nome')+')');
+    for(const x of recs){
+      const k=x.emp+'|'+x.cod+'|'+norm(x.nome).trim();
+      const o=acc.get(k)||{emp:x.emp,cod:x.cod,nome:x.nome};
+      for(const f of ['cpf','cargo','adm','sit','pis','nasc','end','cc'])if(vz2(o[f])&&!vz2(x[f]))o[f]=x[f];
+      acc.set(k,o);
+    }
+  }
+  const porNome=new Map();
+  DATA.forEach(r=>{const k=r[1]+'|'+norm(r[0]).trim();if(!porNome.has(k))porNome.set(k,[]);porNome.get(k).push(r)});
+  const linhas=[];let semCpf=0,semAdm=0;
+  for(const o of acc.values()){
+    const emp=mapEmp(o.emp);
+    let cpf=cpfKey(o.cpf);
+    if(!cpf){ // planilha sem CPF: tenta achar a pessoa já cadastrada (mesma empresa e mesmo nome)
+      const c=porNome.get(emp+'|'+norm(o.nome).trim());
+      if(c&&new Set(c.map(r=>cpfKey(r[3]))).size===1)cpf=cpfKey(c[0][3]);
+    }
+    if(!cpf){semCpf++;continue}
+    cpf=cpf.padStart(11,'0');
+    let adm=dataCel(o.adm||'');
+    const ant=DATA.find(r=>cpfKey(r[3])===cpf&&r[1]===emp&&r[5]===adm)||DATA.find(r=>cpfKey(r[3])===cpf&&r[1]===emp);
+    if(!/^\d\d\/\d\d\/\d{4}$/.test(adm))adm=ant?ant[5]:'';
+    if(!adm){semAdm++;continue}
+    const sit=!vz2(o.sit)?(SITTXT[+o.sit]||('Situação '+(+o.sit))):(ant?ant[6]:'Trabalhando');
+    const ex=Object.assign({},ant&&ant[10]||{}); // não apaga o que já existe (salário, RG, etc.)
+    if(o.cod&&!ex.cod_empregado)ex.cod_empregado=o.cod;
+    if(o.pis)ex.pis=o.pis;
+    if(!vz2(o.nasc)){const n=dataCel(o.nasc);if(/^\d\d\/\d\d\/\d{4}$/.test(n))ex.nascimento=n}
+    if(o.end&&!ex.endereco)ex.endereco=o.end;
+    if(o.cc&&!ex.cod_centro_custo)ex.cod_centro_custo=o.cc;
+    const reg=[o.nome.trim(),cpf,emp,ant?ant[2]:'',o.cargo||(ant?ant[4]:''),adm,sit];
+    if(Object.keys(ex).length)reg.push(ex);
+    linhas.push(reg);
+  }
+  const av=[];
+  if(semCpf)av.push(semCpf+' sem CPF (escolha junto o "Empregados II" ou o "Profissional I", que têm o CPF)');
+  if(semAdm)av.push(semAdm+' sem data de admissão (escolha junto o "Empregados I/II" ou o "Profissional II")');
+  return {hdr:['Nome','CPF','Empresa','Departamento','Cargo','Admissão','Situação'],linhas,
+    nota:'Arquivos lidos:\n'+info.join('\n'),aviso:av.join(' · ')};
+}
+const vz2=v=>v===''||v==null||(typeof v==='string'&&!v.trim());
 function txtData(v){
   if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+43200000);return p2(d.getDate())+'/'+p2(d.getMonth()+1)+'/'+d.getFullYear()}
   return String(v==null?'':v).trim();
@@ -2067,7 +2214,7 @@ function montaReg(r){
   let cpf=cpfKey(g('cpf'));if(cpf&&cpf.length<11&&cpf.length>=9)cpf=cpf.padStart(11,'0');
   if(!nome||cpf.length!==11)return null;
   const sit=String(g('sit')).trim()||'Trabalhando';
-  const reg=[nome,String(IMP.sel.emp>=0?g('emp'):$('iEmpPad').value).trim(),String(g('dep')).trim(),fmtCpf(cpf),String(g('cargo')).trim(),txtData(g('adm')),sit,(SITCOD[sit]||(/trabalh/i.test(sit)?1:5))];
+  const reg=[nome,String(IMP.sel.emp>=0?g('emp'):$('iEmpPad').value).trim(),String(g('dep')).trim(),fmtCpf(cpf),String(g('cargo')).trim(),txtData(g('adm')),sit,(SITCOD[sit]||(/^Situação (\d+)$/.test(sit)?+RegExp.$1:(/trabalh/i.test(sit)?1:5)))];
   if(r[7]&&typeof r[7]==='object')reg[10]=r[7];
   return reg;
 }
@@ -2080,7 +2227,7 @@ function atualizaImp(){
   IMP.regs=regs;
   const atuais=new Set(DATA.map(r=>cpfKey(r[3])));
   const novos=regs.filter(r=>!atuais.has(cpfKey(r[3]))).length;
-  $('iResumo').textContent=regs.length+' funcionários válidos · '+novos+' novos · '+(regs.length-novos)+' já existem (serão atualizados)'+(ign.length?' · '+ign.length+' linhas ignoradas (sem nome, CPF ou empresa)':'');
+  $('iResumo').textContent=regs.length+' funcionários válidos · '+novos+' novos · '+(regs.length-novos)+' já existem (serão atualizados)'+(ign.length?' · '+ign.length+' linhas ignoradas (sem nome, CPF ou empresa)':'')+(IMP.aviso?' · '+IMP.aviso:'')+(IMP.nota?'\n'+IMP.nota:'');$('iResumo').style.whiteSpace='pre-line';
   $('iPrev').innerHTML='<tr><th>Nome</th><th>CPF</th><th>Empresa</th><th>Cargo</th></tr>'+regs.slice(0,5).map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[3])}</td><td>${esc(r[1])}</td><td>${esc(r[4])}</td></tr>`).join('');
   $('iOk').disabled=!regs.length;
   $('iErro').textContent=regs.length?'':'Nenhuma linha válida. Confira se Nome, CPF e Empresa estão nas colunas certas.';
@@ -2102,12 +2249,12 @@ function processa(wb){
 }
 $('imp').onclick=()=>{$('iFile').value='';$('iPaste').value='';$('iMap').style.display='none';$('iErro').textContent='';$('iOk').disabled=true;IMP=null;abre('mImp')};
 $('iCancel').onclick=()=>fecha('mImp');
-$('iFile').onchange=ev=>{
-  const f=ev.target.files[0];if(!f)return;
+function lerArqImp(f){return new Promise((ok,no)=>{
   const rd=new FileReader();
+  rd.onerror=()=>no(new Error('leitura'));
   rd.onload=()=>{
     try{
-      let wb,rows=null;
+      let wb=null,rows=null;
       if(/\.(csv|txt|tsv)$/i.test(f.name)){
         let txt=new TextDecoder('utf-8').decode(rd.result);
         if(txt.includes('\ufffd'))txt=new TextDecoder('windows-1252').decode(rd.result);
@@ -2120,19 +2267,42 @@ $('iFile').onchange=ev=>{
         }
       }
       if(!rows)rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,cellDates:true,defval:''});
-      if(ehRelatorioAtivos(rows)){
-        IMP=relatorioAtivos(rows);
-        if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
-        mostraMapa();
-      }else if(ehRelatorioERP(rows)){
-        IMP=relatorioERP(rows);
-        if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
-        mostraMapa();
-      }else if(wb)processa(wb);
-      else $('iErro').textContent='Não reconheci o formato desse arquivo.';
-    }catch(e){$('iErro').textContent='Não consegui ler esse arquivo.'}
+      ok({nome:f.name,wb,rows});
+    }catch(e){no(e)}
   };
   rd.readAsArrayBuffer(f);
+})}
+$('iFile').onchange=async ev=>{
+  const fs=[...ev.target.files];if(!fs.length)return;
+  $('iErro').textContent='';$('iMap').style.display='none';$('iOk').disabled=true;IMP=null;
+  const lidos=[],falhas=[];
+  for(const f of fs){try{lidos.push(await lerArqImp(f))}catch(e){falhas.push(f.name)}}
+  if(!lidos.length){$('iErro').textContent='Não consegui ler '+(falhas.length>1?'esses arquivos':'esse arquivo')+'.';return}
+  try{
+    const rel=lidos.filter(x=>ehRelacaoEmp(x.rows));
+    if(rel.length){
+      IMP=relatorioRelacoes(rel);
+      const outros=lidos.filter(x=>!rel.includes(x)).map(x=>x.nome).concat(falhas);
+      if(outros.length)IMP.nota+='\nIgnorados (não são "Relação de Empregados"): '+outros.join(', ');
+      if(!IMP.linhas.length){const av=IMP.aviso;IMP=null;$('iErro').textContent='Não consegui montar nenhum funcionário. '+(av||'Confira se um dos arquivos tem o CPF (Empregados II ou Profissional I).');return}
+      mostraMapa();return;
+    }
+    if(lidos.length>1){$('iErro').textContent='Para escolher vários arquivos de uma vez, eles precisam ser relatórios "Relação de Empregados". Escolha um por vez nos outros formatos.';return}
+    const {rows,wb}=lidos[0];
+    if(ehRelatorioAtivos(rows)){
+      IMP=relatorioAtivos(rows);
+      if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
+      mostraMapa();
+    }else if(ehRelatorioERP(rows)){
+      IMP=relatorioERP(rows);
+      if(!IMP.linhas.length){$('iErro').textContent='Não encontrei funcionários nesse relatório.';return}
+      mostraMapa();
+    }else{
+      IMP=lerLinhasRows(rows);
+      if(!IMP.linhas.length){IMP=null;$('iErro').textContent='Não encontrei linhas de dados.';return}
+      mostraMapa();
+    }
+  }catch(e){IMP=null;$('iErro').textContent='Não consegui ler esse arquivo.'}
 };
 $('iPaste').addEventListener('input',()=>{
   const v=$('iPaste').value;if(!v.trim()){$('iMap').style.display='none';return}
