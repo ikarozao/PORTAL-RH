@@ -1773,7 +1773,8 @@ function montaEpi(i){
   const e=r[10]||{};
   return {
     nome:String(r[0]||'').trim().toUpperCase(),
-    funcao:String(e.funcao||r[4]||'').trim().toUpperCase(),
+    funcao:String(r[4]||'').trim().toUpperCase(),     // Função = Cargo do cadastro
+    
     rg:String(e.rg||'').trim(),            // sem RG cadastrado: fica em branco
     cpf:fmtCpf(r[3]),
     entrega:epiDataBR(r[5])                // data de admissão
