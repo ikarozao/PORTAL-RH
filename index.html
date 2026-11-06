@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/favicon.png">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Opção Contabilidade · Funcionários e Descontos</title>
@@ -160,6 +162,21 @@ button.sm:hover{border-color:var(--ac)}
 #ov iframe{flex:1;border:0;width:100%;background:#fff}
 @media (max-width:1480px){#fDias .lin,#fDias .pares{flex-wrap:wrap}}
 .imgprev{display:none;max-width:100%;max-height:230px;border-radius:10px;border:1px solid var(--bd);margin-top:10px;background:#fff}
+
+/* Cálculo de salário */
+.salario-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:9px}
+.salario-kpi{border:1px solid var(--bd);border-radius:9px;padding:12px;background:var(--acl)}
+.salario-kpi span{display:block;color:var(--mut);font-size:12px;margin-bottom:5px}
+.salario-kpi strong{font-size:19px;font-variant-numeric:tabular-nums}
+#rubricasTb input,#rubricasTb select{padding:8px;font-size:13px;min-width:0}
+#rubricasTb td{padding:5px}
+#rubricasTb .r-desc{min-width:130px}
+#rubricasTb .r-val{width:115px}
+.calc-note{font-size:12px;color:var(--mut);line-height:1.5}
+.calc-result-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.calc-result-line:last-child{border:0}
+.calc-result-line strong{font-variant-numeric:tabular-nums}
+@media(max-width:560px){#rubricasTb{min-width:640px}.salario-kpi strong{font-size:17px}}
 </style>
 </head>
 <body>
@@ -178,6 +195,7 @@ button.sm:hover{border-color:var(--ac)}
     <button class="tab" data-t="notebook">Termo de notebook</button>
     <button class="tab" data-t="epi">Registro de EPI</button>
     <button class="tab" data-t="conta">Conta salário</button>
+    <button class="tab" data-t="salario">Cálculo de salário</button>
     <button class="tab" data-t="ferias">Férias · Compensação de horas</button>
     <button class="tab" data-t="empresas">Empresas</button>
     <button class="tab" data-t="demitidos">Demitidos</button>
@@ -193,6 +211,7 @@ button.sm:hover{border-color:var(--ac)}
       <button class="opt" data-go="notebook"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg></span><h3>Termo de notebook</h3><p>Entrega do notebook, com modelo, número de série e foto.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
       <button class="opt" data-go="epi"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 14a7.5 7.5 0 0 1 15 0"/><path d="M2.5 14h19v3.5h-19z"/><path d="M12 6.5V4"/></svg></span><h3>Registro de EPI</h3><p>Pesquise o funcionário e baixe o registro de entrega de EPI´s em PDF.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
       <button class="opt" data-go="conta"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span><h3>Conta salário</h3><p>Planilha de abertura de conta com os dados do cadastro; você completa só o que falta.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
+      <button class="opt" data-go="salario"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h4m-4 3h10"/><path d="M16 12v4"/></svg></span><h3>Cálculo de salário</h3><p>Calcule bruto, INSS, IRRF, FGTS e líquido, com horas extras, comissões e outras rubricas.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
       <button class="opt" data-go="ferias"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="12" cy="15" r="2.6"/><path d="M12 13.8v1.3l.9.6"/></svg></span><h3>Férias · Compensação de horas</h3><p>Monte o relatório dia a dia, com jornada, atestados e feriados, em PDF e Excel.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
       <button class="opt" data-go="empresas"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M2.5 21h19"/><path d="M8 8h2M8 12h2M8 16h2"/></svg></span><h3>Dados das empresas</h3><p>Consulte CNPJ, endereço e modelo de cada empresa e complete o que estiver faltando.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
       <button class="opt" data-go="demitidos"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M2.5 21h19"/><path d="M8 8h2M8 12h2M8 16h2"/></svg></span><h3>Demitidos</h3><p>Funcionários desligados, com data e motivo da demissão.</p><span class="go">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button>
@@ -203,6 +222,39 @@ button.sm:hover{border-color:var(--ac)}
       <button class="opt" id="hImp"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span><div><h3>Importar relatório</h3><p>Excel ou CSV com os funcionários</p></div></button>
     </div>
   </div>
+
+
+  <section id="calcSalario" style="display:none">
+    <div class="card">
+      <div class="sel"><div><h2>Dados da remuneração</h2><div class="ext">Informe os dados da competência. Os resultados são atualizados automaticamente.</div></div><span class="tag">Tabela 2026</span></div>
+      <div class="grid" style="margin-top:12px">
+        <div class="full"><label for="csFuncionario">Selecionar funcionário cadastrado</label><select id="csFuncionario"><option value="">Digitar funcionário manualmente</option></select><div class="ext" id="csFuncionarioInfo" style="margin-top:5px">Selecione alguém do cadastro para preencher os dados automaticamente ou mantenha a opção manual.</div></div>
+        <div class="full"><label for="csNome">Nome do funcionário</label><input id="csNome" placeholder="Nome do funcionário"></div>
+        <div><label for="csCompetencia">Competência</label><input id="csCompetencia" type="month" value="2026-11"></div>
+        <div><label for="csSalario">Salário-base mensal (R$)</label><input id="csSalario" inputmode="decimal" placeholder="Ex.: 2.500,00" value="0"></div>
+        <div><label for="csDivisor">Divisor mensal de horas</label><input id="csDivisor" type="number" min="1" step="1" value="220"></div>
+        <div><label for="csDependentes">Dependentes para IRRF</label><input id="csDependentes" type="number" min="0" step="1" value="0"></div>
+        <div><label for="csOutrosInss">Ajuste manual da base do INSS (R$)</label><input id="csOutrosInss" inputmode="decimal" placeholder="0,00" value="0"></div>
+      </div>
+      <div class="calc-note" style="margin-top:10px">O divisor padrão é 220 horas. Ajuste conforme a jornada/contrato. Horas extras são calculadas sobre o salário-base. O ajuste manual da base do INSS não altera o bruto nem o líquido; use rubricas para lançar verbas.</div>
+    </div>
+    <div class="card">
+      <div class="sel"><div><h2>Rubricas da folha</h2><div class="ext">Adicione comissões, adicionais, horas extras, descontos e outras verbas.</div></div><div class="bar"><select id="csPreset" style="width:auto;min-width:190px"><option value="">Rubrica rápida…</option><option value="0">Comissão</option><option value="1">Hora extra 50%</option><option value="2">Hora extra 60%</option><option value="3">Hora extra 100%</option><option value="4">Adicional noturno</option><option value="5">Gratificação</option><option value="6">Falta / atraso</option><option value="7">Vale / adiantamento</option><option value="8">Desconto diverso</option></select><button class="btn sec" id="csAddPreset" type="button">Adicionar selecionada</button><button class="btn sec" id="csAddRubrica" type="button">+ Rubrica personalizada</button></div></div>
+      <div class="scroll" style="max-height:none;margin-top:12px"><table id="rubricasTb"><thead><tr><th>Tipo</th><th>Descrição</th><th>Quantidade / horas</th><th>Valor (R$)</th><th>INSS</th><th>FGTS</th><th>IRRF</th><th></th></tr></thead><tbody id="rubricasBody"></tbody></table></div>
+      <div class="ext" style="margin-top:8px">Nas horas extras, informe a quantidade de horas; o valor será calculado automaticamente. Nas demais rubricas, informe o valor em reais. As incidências podem ser ajustadas individualmente.</div>
+    </div>
+    <div class="card"><h2>Resumo do cálculo</h2>
+      <div class="salario-kpis">
+        <div class="salario-kpi"><span>Salário bruto</span><strong id="csBruto">R$ 0,00</strong></div>
+        <div class="salario-kpi"><span>Total de descontos</span><strong id="csDescontos">R$ 0,00</strong></div>
+        <div class="salario-kpi"><span>Salário líquido</span><strong id="csLiquido">R$ 0,00</strong></div>
+        <div class="salario-kpi"><span>FGTS (empresa)</span><strong id="csFgts">R$ 0,00</strong></div>
+      </div>
+      <div style="margin-top:14px" id="csDetalhamento"></div>
+      <div class="calc-note" style="margin-top:12px">Estimativa para folha mensal CLT, com tabelas oficiais de 2026. <a href="https://www.gov.br/inss/pt-br/direitos-e-deveres/inscricao-e-contribuicao/tabela-de-contribuicao-mensal/" target="_blank" rel="noopener">Tabela INSS</a> · <a href="https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026" target="_blank" rel="noopener">Tabela IRRF</a>. Não substitui o fechamento oficial da folha/eSocial. Não contempla automaticamente DSR sobre horas extras, faltas, atrasos, pensão, benefícios, salário-família, múltiplos vínculos, convenção coletiva ou particularidades tributárias. Cadastre essas verbas manualmente quando aplicável.</div>
+    </div>
+    <div class="actions"><button class="btn sec" id="csLimpar" type="button">Limpar cálculo</button><button class="btn" id="csImprimir" type="button">Imprimir folha de pagamento</button></div>
+  </section>
 
   <div id="empDet" style="display:none"></div>
   <div id="empView" style="display:none">
@@ -1206,16 +1258,16 @@ function setTab(m){
   MODO=m;
   const home=m==='home';
   document.body.classList.toggle('home',home);
-  const TIT={consulta:'Consulta de funcionários',desconto:'Autorização de desconto',ferias:'Férias · Compensação de horas',empresas:'Dados das empresas',chip:'Termo de chip',celular:'Termo de celular',notebook:'Termo de notebook',epi:'Registro de EPI',conta:'Conta salário',demitidos:'Funcionários demitidos'};
+  const TIT={salario:'Cálculo de salário',consulta:'Consulta de funcionários',desconto:'Autorização de desconto',ferias:'Férias · Compensação de horas',empresas:'Dados das empresas',chip:'Termo de chip',celular:'Termo de celular',notebook:'Termo de notebook',epi:'Registro de EPI',conta:'Conta salário',demitidos:'Funcionários demitidos'};
   $('titulo').textContent='Portal RH';
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===m));
-  $('dica').textContent=home?'Selecione uma opção para começar':TERMOS[m]?'Escolha o funcionário, preencha os dados e baixe o termo em PDF':m==='epi'?'Pesquise o funcionário e clique nele: o PDF do registro de EPI é baixado na hora':m==='conta'?'Escolha o funcionário e complete só o que não está no cadastro':m==='demitidos'?'Pesquise os funcionários demitidos ou reative um cadastro':m==='consulta'?'Pesquise e consulte os dados dos funcionários':m==='ferias'?'Escolha o funcionário e gere o relatório de compensação de horas':m==='empresas'?'CNPJ, endereço e modelo usados nos documentos':'Escolha o funcionário, informe valor e parcelas e baixe o PDF';
-  $('form').style.display='none';$('formF').style.display='none';$('formT').style.display='none';$('formC').style.display='none';$('contaLista').style.display=m==='conta'?'block':'none';if(m==='conta')renderLote();const sec=['consulta','desconto','ferias','chip','celular','notebook','epi','conta','demitidos'].includes(m);$('busca').style.display=sec?'block':'none';EMPDET=null;$('empDet').style.display='none';$('empView').style.display=m==='empresas'?'block':'none';document.body.classList.toggle('wide',m==='ferias');if(m==='empresas')renderEmp();
+  $('dica').textContent=home?'Selecione uma opção para começar':TERMOS[m]?'Escolha o funcionário, preencha os dados e baixe o termo em PDF':m==='epi'?'Pesquise o funcionário e clique nele: o PDF do registro de EPI é baixado na hora':m==='conta'?'Escolha o funcionário e complete só o que não está no cadastro':m==='salario'?'Calcule remuneração, encargos e descontos com rubricas personalizadas':m==='demitidos'?'Pesquise os funcionários demitidos ou reative um cadastro':m==='consulta'?'Pesquise e consulte os dados dos funcionários':m==='ferias'?'Escolha o funcionário e gere o relatório de compensação de horas':m==='empresas'?'CNPJ, endereço e modelo usados nos documentos':'Escolha o funcionário, informe valor e parcelas e baixe o PDF';
+  $('calcSalario').style.display=m==='salario'?'block':'none';$('form').style.display='none';$('formF').style.display='none';$('formT').style.display='none';$('formC').style.display='none';$('contaLista').style.display=m==='conta'?'block':'none';if(m==='conta')renderLote();const sec=['consulta','desconto','ferias','chip','celular','notebook','epi','conta','demitidos'].includes(m);$('busca').style.display=sec?'block':'none';EMPDET=null;$('empDet').style.display='none';$('empView').style.display=m==='empresas'?'block':'none';document.body.classList.toggle('wide',m==='ferias');if(m==='empresas')renderEmp();
   $('fImpBox').style.display=m==='ferias'?'block':'none';
   render();window.scrollTo(0,0);
 }
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='home'&&b.dataset.t!=='empresas')$('q').focus()});
-document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{setTab(b.dataset.go);if(b.dataset.go!=='empresas')$('q').focus()});
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='home'&&b.dataset.t!=='empresas'&&b.dataset.t!=='salario')$('q').focus()});
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{setTab(b.dataset.go);if(b.dataset.go!=='empresas'&&b.dataset.go!=='salario')$('q').focus()});
 $('logo').onclick=()=>setTab('home');
 $('hNovo').onclick=()=>{setTab('desconto');$('novo').click()};
 $('hImp').onclick=()=>{setTab('consulta');$('imp').click()};
@@ -3246,7 +3298,7 @@ async function sbGrava(regs,opt){
   }
   if(opt.limpaAntigos){const {error}=await SB.from('funcionarios').delete().lt('atualizado_em',t0);if(error)throw error}
 }
-async function sbRecarrega(){BASE=await sbCarrega();aplicaStore()}
+async function sbRecarrega(){BASE=await sbCarrega();aplicaStore();if(typeof csAtualizaFuncionarios==='function')csAtualizaFuncionarios()}
 async function sbCarregaCerts(){
   const o={},ass={};
   for(let from=0;;from+=1000){
@@ -3347,7 +3399,7 @@ async function sbMudaSituacao(r,campos){
 async function sbIniciaApp(){
   $('sbLogin').style.display='none';$('sbSair').style.display='block';
   try{
-    BASE=await sbCarrega();
+    BASE=await sbCarrega();if(typeof csAtualizaFuncionarios==='function')csAtualizaFuncionarios();
     if(STORE.rows.length){await sbGrava(STORE.rows);STORE={mode:'merge',rows:[]};salvaStore();BASE=await sbCarrega()}
     await sbCarregaConta();
     await sbCarregaExtras();
@@ -3379,6 +3431,96 @@ function aplicaTema(t,salvar){
 }
 $('tema').onclick=()=>aplicaTema(TEMA==='dark'?'light':'dark',true);
 aplicaTema(TEMA,false);
+/* ---------- Cálculo de salário ---------- */
+const csRubricas=[];
+const csCentavos=v=>Math.round((Number(v)||0)*100);
+const csMoney=v=>{const n=(Number(v)||0)/100;return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})};
+const csReadMoney=v=>parseMoney(v||'0');
+const csPresets=[
+ {tipo:'provento',desc:'Comissão',modo:'valor',inss:true,fgts:true,irrf:true},
+ {tipo:'provento',desc:'Hora extra 50%',modo:'he50',inss:true,fgts:true,irrf:true},
+ {tipo:'provento',desc:'Hora extra 60%',modo:'he60',inss:true,fgts:true,irrf:true},
+ {tipo:'provento',desc:'Hora extra 100%',modo:'he100',inss:true,fgts:true,irrf:true},
+ {tipo:'provento',desc:'Adicional noturno',modo:'valor',inss:true,fgts:true,irrf:true},
+ {tipo:'provento',desc:'Gratificação',modo:'valor',inss:true,fgts:true,irrf:true},
+ {tipo:'desconto',desc:'Falta / atraso',modo:'valor',inss:false,fgts:false,irrf:false},
+ {tipo:'desconto',desc:'Vale / adiantamento',modo:'valor',inss:false,fgts:false,irrf:false},
+ {tipo:'desconto',desc:'Desconto diverso',modo:'valor',inss:false,fgts:false,irrf:false}
+];
+function csNovaRubrica(p={}){csRubricas.push({tipo:p.tipo||'provento',desc:p.desc||'',modo:p.modo||'valor',qtd:0,valor:0,inss:p.inss??true,fgts:p.fgts??true,irrf:p.irrf??true});csRenderRubricas();csCalcular()}
+function csRenderRubricas(){
+ const tb=$('rubricasBody');if(!tb)return;
+ tb.innerHTML=csRubricas.map((r,i)=>`<tr data-i="${i}"><td><select data-f="tipo"><option value="provento" ${r.tipo==='provento'?'selected':''}>Provento</option><option value="desconto" ${r.tipo==='desconto'?'selected':''}>Desconto</option></select></td><td><input class="r-desc" data-f="desc" value="${esc(r.desc)}" placeholder="Descrição"></td><td>${r.modo.startsWith('he')?`<input data-f="qtd" type="number" min="0" step="0.01" value="${r.qtd||''}" placeholder="Horas">`: '<span class="mini">—</span>'}</td><td>${r.modo.startsWith('he')?`<span class="r-calc-val">${csMoney(csValorRubrica(r))}</span>`:`<input class="r-val" data-f="valor" inputmode="decimal" value="${r.valor?String((r.valor/100).toFixed(2)).replace('.',','):''}" placeholder="0,00">`}</td><td><input data-f="inss" type="checkbox" ${r.inss?'checked':''} aria-label="Incide INSS"></td><td><input data-f="fgts" type="checkbox" ${r.fgts?'checked':''} aria-label="Incide FGTS"></td><td><input data-f="irrf" type="checkbox" ${r.irrf?'checked':''} aria-label="Incide IRRF"></td><td><button class="lnk" data-del="1" type="button">Remover</button></td></tr>`).join('');
+}
+function csValorRubrica(r){if(r.modo==='valor')return r.valor||0;const sal=csReadMoney($('csSalario').value),div=Math.max(1,Number($('csDivisor').value)||220),pct={he50:1.5,he60:1.6,he100:2}[r.modo]||1;return Math.round((sal/div)*pct*(Number(r.qtd)||0));}
+$('csAddRubrica').onclick=()=>csNovaRubrica();
+$('csAddPreset').onclick=()=>{const i=$('csPreset').value;if(i===''){alert('Selecione uma rubrica rápida.');return;}csNovaRubrica(csPresets[+i]);$('csPreset').value='';};
+$('rubricasBody').addEventListener('change',ev=>{const tr=ev.target.closest('tr');if(!tr)return;const i=+tr.dataset.i,r=csRubricas[i],f=ev.target.dataset.f;if(!r||!f)return;if(ev.target.type==='checkbox')r[f]=ev.target.checked;else if(f==='valor')r.valor=csReadMoney(ev.target.value);else if(f==='qtd')r.qtd=Number(ev.target.value)||0;else r[f]=ev.target.value;if(f==='tipo'&&r.tipo==='desconto'){r.inss=false;r.fgts=false;r.irrf=false}csRenderRubricas();csCalcular()});
+$('rubricasBody').addEventListener('input',ev=>{const tr=ev.target.closest('tr');if(!tr)return;const r=csRubricas[+tr.dataset.i],f=ev.target.dataset.f;if(!r||!f)return;if(f==='desc')r.desc=ev.target.value;else if(f==='qtd'){r.qtd=Number(ev.target.value)||0;const out=tr.querySelector('.r-calc-val');if(out)out.textContent=csMoney(csValorRubrica(r));}else if(f==='valor')r.valor=csReadMoney(ev.target.value);csCalcular()});
+$('rubricasBody').addEventListener('click',ev=>{const b=ev.target.closest('[data-del]');if(!b)return;csRubricas.splice(+b.closest('tr').dataset.i,1);csRenderRubricas();csCalcular()});
+function csINSS(base){let v=Math.max(0,Math.min(base,847555));const faixas=[ [162100,0.075],[290284,0.09],[435427,0.12],[847555,0.14] ];let prev=0,total=0;for(const [lim,aliq] of faixas){const parte=Math.max(0,Math.min(v,lim)-prev);total+=parte*aliq;prev=lim;if(v<=lim)break;}return Math.round(total)}
+function csIRRF(rend, inss, deps){const dep=csCentavos(189.59)*deps,simpl=csCentavos(607.20),ded=Math.max(inss+dep,simpl),base=Math.max(0,rend-ded);let imposto=0;if(base>466468)imposto=base*.275-90873;else if(base>375105)imposto=base*.225-67549;else if(base>282665)imposto=base*.15-39416;else if(base>242880)imposto=base*.075-18216;imposto=Math.max(0,Math.round(imposto));let reducao=0;if(rend<=500000)reducao=Math.min(imposto,31289);else if(rend<=735000)reducao=Math.min(imposto,Math.max(0,Math.round(97862-0.133145*rend)));return Math.max(0,imposto-reducao)}
+function csCalcular(){
+ if(!$('csSalario'))return;
+ const salario=csReadMoney($('csSalario').value),div=Math.max(1,Number($('csDivisor').value)||220),dep=Math.max(0,Number($('csDependentes').value)||0);
+ let proventos=salario,descontosRub=0,baseInss=salario,baseFgts=salario,baseIrrf=salario;
+ csRubricas.forEach(r=>{const v=csValorRubrica(r);if(r.tipo==='provento'){proventos+=v;if(r.inss)baseInss+=v;if(r.fgts)baseFgts+=v;if(r.irrf)baseIrrf+=v;}else descontosRub+=v});
+ const extraInss=csReadMoney($('csOutrosInss').value);baseInss+=extraInss;
+ const inss=csINSS(baseInss),irrf=csIRRF(baseIrrf,inss,dep),fgts=Math.round(baseFgts*.08),totalDesc=descontosRub+inss+irrf,liquido=proventos-totalDesc;
+ $('csBruto').textContent=csMoney(proventos);$('csDescontos').textContent=csMoney(totalDesc);$('csLiquido').textContent=csMoney(liquido);$('csFgts').textContent=csMoney(fgts);
+ const lines=[['Salário-base',salario],['Outros proventos',proventos-salario],['Base de cálculo do INSS',baseInss],['INSS (progressivo)',inss],['Base de cálculo do IRRF',baseIrrf],['IRRF',irrf],['Outros descontos',descontosRub],['Base de cálculo do FGTS',baseFgts],['FGTS – depósito da empresa (8%)',fgts],['Salário líquido',liquido]];
+ $('csDetalhamento').innerHTML=lines.map(([n,v])=>`<div class="calc-result-line"><span>${n}</span><strong>${csMoney(v)}</strong></div>`).join('');
+}
+['csSalario','csDivisor','csDependentes','csOutrosInss'].forEach(id=>$(id).addEventListener('input',()=>{csRenderRubricas();csCalcular()}));
+$('csLimpar').onclick=()=>{if(!confirm('Limpar os dados deste cálculo?'))return;$('csFuncionario').value='';window.csFuncionarioSelecionado={};$('csFuncionarioInfo').textContent='Modo manual: preencha o nome e o salário sem precisar cadastrar a pessoa.';$('csNome').value='';$('csSalario').value='0';$('csDivisor').value='220';$('csDependentes').value='0';$('csOutrosInss').value='0';csRubricas.splice(0);csRenderRubricas();csCalcular()};
+$('csImprimir').onclick=()=>{
+ csCalcular();
+ const nome=$('csNome').value||'Não informado',comp=$('csCompetencia').value||'Não informada';
+ const emp=window.csFuncionarioSelecionado||{};
+ const empresa=emp.empresa||'';
+ const cargo=emp.cargo||'';
+ const cpf=emp.cpf||'';
+ const admissao=emp.admissao||'';
+ const salario=csReadMoney($('csSalario').value),div=Math.max(1,Number($('csDivisor').value)||220);
+ const rows=csRubricas.map((r,i)=>{const v=csValorRubrica(r);return {codigo:String(100+i),desc:r.desc||'Rubrica',ref:r.modo.startsWith('he')?`${Number(r.qtd)||0} h`: '—',provento:r.tipo==='provento'?v:0,desconto:r.tipo==='desconto'?v:0}});
+ rows.unshift({codigo:'001',desc:'Salário mensal',ref:'30 dias',provento:salario,desconto:0});
+ const inss=csReadMoney($('csDetalhamento').querySelectorAll('.calc-result-line')[3]?.querySelector('strong')?.textContent||'0');
+ const bruto=csReadMoney($('csBruto').textContent),liquido=csReadMoney($('csLiquido').textContent),fgts=csReadMoney($('csFgts').textContent);
+ const descontos=csReadMoney($('csDescontos').textContent);
+ const fmt=v=>csMoney(v);
+ const w=window.open('','_blank');if(!w){alert('Permita pop-ups para imprimir a folha.');return;}
+ const rubricas=rows.map(r=>`<tr><td>${r.codigo}</td><td>${esc(r.desc)}</td><td class="center">${esc(r.ref)}</td><td class="num">${r.provento?fmt(r.provento):''}</td><td class="num">${r.desconto?fmt(r.desconto):''}</td></tr>`).join('');
+ w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Demonstrativo de pagamento - ${esc(nome)}</title><style>
+ @page{size:A4;margin:12mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#222;margin:0}.folha{border:1px solid #555;padding:10px}.topo{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px}.marca{font-size:16px;font-weight:700;letter-spacing:.2px}.sub{font-size:9px;color:#555;margin-top:3px}.competencia{text-align:right;font-size:12px;font-weight:bold}.dados{display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px 12px;border:1px solid #888;padding:7px;margin-bottom:8px}.campo span{display:block;font-size:8px;color:#555;margin-bottom:2px}.campo b{font-size:10px;font-weight:600}.dados .wide{grid-column:span 2}table{width:100%;border-collapse:collapse}th{background:#e9edf0;border:1px solid #888;padding:6px 5px;text-align:left;font-size:9px}td{border:1px solid #aaa;padding:5px}.center{text-align:center}.num{text-align:right;white-space:nowrap}.totais{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.total{border:1px solid #888;padding:7px}.total span{display:block;font-size:8px;color:#555;margin-bottom:4px}.total b{font-size:12px}.liquido{margin-top:8px;border:2px solid #333;padding:9px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:bold}.bases{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;border:1px solid #aaa;padding:7px}.bases div span{display:block;color:#555;font-size:8px;margin-bottom:3px}.rodape{margin-top:12px;border-top:1px solid #aaa;padding-top:6px;font-size:8px;color:#555;display:flex;justify-content:space-between}.assinatura{margin-top:28px;display:flex;justify-content:space-between}.assinatura div{width:42%;border-top:1px solid #555;text-align:center;padding-top:4px;font-size:8px}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+ </style></head><body><div class="folha"><div class="topo"><div><div class="marca">DEMONSTRATIVO DE PAGAMENTO</div><div class="sub">Recibo de pagamento de salário · Documento para conferência</div></div><div class="competencia">COMPETÊNCIA<br>${esc(comp)}</div></div>
+ <div class="dados"><div class="campo wide"><span>EMPREGADOR / EMPRESA</span><b>${esc(empresa||'Não informado')}</b></div><div class="campo"><span>CPF</span><b>${esc(cpf||'—')}</b></div><div class="campo wide"><span>NOME DO FUNCIONÁRIO</span><b>${esc(nome)}</b></div><div class="campo"><span>CARGO / FUNÇÃO</span><b>${esc(cargo||'—')}</b></div><div class="campo"><span>DATA DE ADMISSÃO</span><b>${esc(admissao||'—')}</b></div><div class="campo"><span>SALÁRIO CONTRATUAL</span><b>${fmt(salario)}</b></div></div>
+ <table><thead><tr><th style="width:8%">CÓD.</th><th>DESCRIÇÃO</th><th style="width:13%;text-align:center">REFERÊNCIA</th><th style="width:17%;text-align:right">VENCIMENTOS</th><th style="width:17%;text-align:right">DESCONTOS</th></tr></thead><tbody>${rubricas}<tr><td>901</td><td>INSS</td><td class="center">—</td><td></td><td class="num">${fmt(descontos - rows.reduce((a,r)=>a+r.desconto,0) - Math.max(0,csReadMoney($('csDetalhamento').querySelectorAll('.calc-result-line')[5]?.querySelector('strong')?.textContent||'0')))}</td></tr><tr><td>902</td><td>IRRF</td><td class="center">—</td><td></td><td class="num">${$('csDetalhamento').querySelectorAll('.calc-result-line')[5]?.querySelector('strong')?.textContent||fmt(0)}</td></tr></tbody></table>
+ <div class="totais"><div class="total"><span>TOTAL DE VENCIMENTOS</span><b>${fmt(bruto)}</b></div><div class="total"><span>TOTAL DE DESCONTOS</span><b>${fmt(descontos)}</b></div><div class="total"><span>BASE FGTS</span><b>${fmt(fgts/0.08)}</b></div><div class="total"><span>FGTS DO MÊS (8%)</span><b>${fmt(fgts)}</b></div></div>
+ <div class="liquido"><span>VALOR LÍQUIDO A RECEBER</span><span>${fmt(liquido)}</span></div>
+ <div class="bases"><div><span>BASE INSS</span><b>${$('csDetalhamento').querySelectorAll('.calc-result-line')[2]?.querySelector('strong')?.textContent||'—'}</b></div><div><span>BASE IRRF</span><b>${$('csDetalhamento').querySelectorAll('.calc-result-line')[4]?.querySelector('strong')?.textContent||'—'}</b></div><div><span>DEPENDENTES IRRF</span><b>${esc($('csDependentes').value||'0')}</b></div><div><span>DIVISOR DE HORAS</span><b>${div}</b></div></div>
+ <div class="assinatura"><div>Assinatura do funcionário</div><div>Data</div></div><div class="rodape"><span>Demonstrativo gerado pelo Portal RH. Modelo visual inspirado em recibos de folha de pagamento.</span><span>Não substitui recibo oficial validado pelo sistema de folha.</span></div></div><script>window.print()<\/script></body></html>`);
+ w.document.close();
+};
+window.csFuncionarioSelecionado={};
+function csAtualizaFuncionarios(){
+ const sel=$('csFuncionario');if(!sel)return;const atual=sel.value;
+ const ativos=(BASE||[]).slice().sort((a,b)=>String(a[0]||'').localeCompare(String(b[0]||''),'pt-BR'));
+ sel.innerHTML='<option value="">Digitar funcionário manualmente</option>'+ativos.map((r,i)=>`<option value="${i}">${esc(r[0]||'Sem nome')} · ${esc(r[1]||'Empresa não informada')} · ${esc(r[6]||'Situação não informada')}</option>`).join('');
+ if([...sel.options].some(o=>o.value===atual))sel.value=atual;
+ sel.dataset.rows=JSON.stringify(ativos);
+}
+$('csFuncionario').addEventListener('change',()=>{
+ const sel=$('csFuncionario');if(!sel.value){window.csFuncionarioSelecionado={};$('csFuncionarioInfo').textContent='Modo manual: preencha o nome e o salário sem precisar cadastrar a pessoa.';return;}
+ const rows=JSON.parse(sel.dataset.rows||'[]'),r=rows[Number(sel.value)];if(!r)return;
+ const ex=r[10]||{},sal=ex.salario;
+ window.csFuncionarioSelecionado={nome:r[0]||'',empresa:r[1]||'',departamento:r[2]||'',cpf:r[3]||'',cargo:r[4]||'',admissao:r[5]||''};
+ $('csNome').value=r[0]||'';
+ if(sal!==undefined&&sal!==null&&sal!=='')$('csSalario').value=typeof sal==='number'?sal.toFixed(2).replace('.',','):String(sal);
+ $('csFuncionarioInfo').textContent=[r[1],r[4],r[5]?'Admissão: '+r[5]:''].filter(Boolean).join(' · ')+(sal?' · salário carregado do cadastro':' · salário não consta no cadastro; informe manualmente');
+ csCalcular();
+});
+csAtualizaFuncionarios();
+csNovaRubrica(csPresets[0]);csRubricas.splice(0);csRenderRubricas();csCalcular();
 setTab('home');
 </script>
 </body>
